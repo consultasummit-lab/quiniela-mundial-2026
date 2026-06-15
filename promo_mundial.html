@@ -1238,69 +1238,63 @@ function renderRegistroForm() {
       errorEl.textContent = 'El número de WhatsApp debe tener al menos 10 dígitos.';
       return;
     }
-    const folios = Math.floor(monto / 150);
-    if (folios === 0) {
+    const foliosEsperados = Math.floor(monto / 150);
+    if (foliosEsperados === 0) {
       errorEl.textContent = 'La compra debe ser de al menos $150 para generar un folio.';
       return;
     }
     errorEl.textContent = '';
 
-    // ===== VALIDACIÓN DE TICKET DUPLICADO (PER NEGOCIO) =====
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Verificando ticket...';
-
-    const dupCheck = await checkTicketDuplicate(biz, ticket);
-
-    if (dupCheck.exists === true) {
-      errorEl.textContent = `Este ticket ya fue registrado para ${bizName}. No se puede generar otro folio.`;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Registrar y generar folio(s)';
-      return;
-    }
-    // Si dupCheck.exists === null (sin conexión / API no configurada),
-    // se permite continuar para no bloquear el flujo en tienda.
-
     submitBtn.textContent = 'Registrando...';
 
     const timestamp = new Date();
-    const folioNums = [];
-    for (let i = 0; i < folios; i++) {
-      state.counters[biz] += 1;
-      folioNums.push(state.counters[biz]);
-    }
-
-    const prefix = biz === 'ca' ? 'CA' : 'ER';
-    const folioStrings = folioNums.map(n => `${prefix}-${pad(n)}`);
     const { fecha, hora } = formatFecha(timestamp);
+    const prefix = biz === 'ca' ? 'CA' : 'ER';
 
-    // ===== ENVÍO AL GOOGLE SHEET =====
+    // ===== REGISTRO EN GOOGLE SHEET (el servidor asigna los folios) =====
+    // El servidor valida duplicados Y asigna los números de folio de forma
+    // atómica (consecutivos y únicos sin importar desde cuántos
+    // dispositivos se registre al mismo tiempo).
     const syncResult = await sendRegistroToSheet({
       biz, nombre, whatsapp, ticket, monto,
-      folios: folioStrings,
       fecha, hora
     });
 
-    if (syncResult.ok) {
+    let folioStrings;
+
+    if (syncResult.ok && Array.isArray(syncResult.folios)) {
+      // Folios asignados correctamente por el servidor.
+      folioStrings = syncResult.folios;
       state.syncStatus = 'synced';
     } else if (syncResult.duplicate || syncResult.error === 'duplicate') {
-      // El servidor detectó el duplicado justo antes de guardar
-      // (otro celular registró el mismo ticket al mismo tiempo).
       errorEl.textContent = `Este ticket ya fue registrado para ${bizName}. No se puede generar otro folio.`;
       submitBtn.disabled = false;
       submitBtn.textContent = 'Registrar y generar folio(s)';
-      // Revertir el contador ya que no se generó el folio
-      state.counters[biz] -= folios;
       return;
-    } else if (syncResult.offline) {
-      state.syncStatus = 'offline';
+    } else if (syncResult.error === 'busy') {
+      errorEl.textContent = 'El sistema está ocupado procesando otro registro. Intenta de nuevo en unos segundos.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Registrar y generar folio(s)';
+      return;
     } else {
-      state.syncStatus = 'error';
+      // Sin conexión / API no configurada / error del servidor:
+      // no bloqueamos el flujo en tienda, pero los folios generados
+      // aquí son PROVISIONALES (marcados como pendientes de sincronizar)
+      // y deben revisarse/registrarse manualmente después.
+      const folioNums = [];
+      for (let i = 0; i < foliosEsperados; i++) {
+        state.counters[biz] += 1;
+        folioNums.push(state.counters[biz]);
+      }
+      folioStrings = folioNums.map(n => `${prefix}-${pad(n)}*`);
+      state.syncStatus = syncResult.offline ? 'offline' : 'error';
     }
 
     state.lastData = {
       nombre, whatsapp, ticket, monto,
       timestamp,
-      folioNums
+      folioStrings
     };
     state.view = 'ticket';
     render();
@@ -1313,16 +1307,14 @@ function renderRegistroForm() {
 function renderFolioTicket() {
   const biz = state.biz;
   const data = state.lastData;
-  const folioNums = data.folioNums;
+  const folioValues = data.folioStrings;
   const isCA = biz === 'ca';
   const logo = isCA ? ASSETS.logoCA : ASSETS.logoER;
   const character = isCA ? ASSETS.donChuy : ASSETS.chanchito;
-  const prefix = isCA ? 'CA' : 'ER';
   const { fecha, hora } = formatFecha(data.timestamp);
 
-  const isMultiple = folioNums.length > 1;
+  const isMultiple = folioValues.length > 1;
   const folioLabel = isMultiple ? 'Folios' : 'Folio';
-  const folioValues = folioNums.map(n => `${prefix}-${pad(n)}`);
 
   const wrap = document.createElement('div');
   wrap.className = `biz-view ${biz}`;
@@ -1331,12 +1323,14 @@ function renderFolioTicket() {
     ? `<div class="value multi">${folioValues.map(v => `<span class="folio-chip">${v}</span>`).join('')}</div>`
     : `<div class="value">${folioValues[0]}</div>`;
 
+
   let syncBannerHtml = '';
   if (state.syncStatus === 'offline' || state.syncStatus === 'error') {
     syncBannerHtml = `
       <div class="sync-banner warn">
-        ⚠️ No se pudo guardar este registro en Google Sheets (sin conexión o configuración pendiente).
-        El folio es válido, pero recuerda registrar este ticket manualmente cuando recuperes la conexión.
+        ⚠️ Sin conexión: este registro NO se guardó en Google Sheets y el folio
+        marcado con (*) es PROVISIONAL. En cuanto recuperes internet, vuelve a
+        registrar este ticket para obtener el folio definitivo desde el sistema.
       </div>`;
   } else if (state.syncStatus === 'synced') {
     syncBannerHtml = `
@@ -1364,7 +1358,7 @@ function renderFolioTicket() {
             <div class="ticket-folio">
               <div class="label">${folioLabel}</div>
               ${folioValueHtml}
-              ${isMultiple ? `<div class="folio-count">${folioNums.length} folios generados</div>` : ''}
+              ${isMultiple ? `<div class="folio-count">${folioValues.length} folios generados</div>` : ''}
             </div>
             <div class="ticket-details">
               <div class="detail-row">
