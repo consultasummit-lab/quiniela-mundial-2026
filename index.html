@@ -423,10 +423,15 @@ function winner(g1,g2){ return g1>g2?"home":g2>g1?"away":"draw"; }
 function scoreMatch(r1,r2,p1,p2,fase,realPenal,predPenal){
   if(r1==null||r2==null||p1==null||p2==null) return{pts:0,tipo:"pendiente"};
   const sc=SCORING[fase]||SCORING.grupos;
-  if(r1===p1&&r2===p2) return{pts:sc.exact,tipo:"exacto"};
+  const penalMatch = realPenal&&predPenal&&
+    realPenal.trim().toLowerCase()===predPenal.trim().toLowerCase();
+  if(r1===p1&&r2===p2){
+    // Exacto: si además hay empate con penales y acertó, suma penal bonus
+    if(r1===r2&&penalMatch) return{pts:sc.exact+(sc.penalty||0),tipo:"exacto"};
+    return{pts:sc.exact,tipo:"exacto"};
+  }
   if(winner(r1,r2)===winner(p1,p2)){
-    if(winner(r1,r2)==="draw"&&realPenal&&predPenal&&
-       realPenal.trim().toLowerCase()===predPenal.trim().toLowerCase()){
+    if(winner(r1,r2)==="draw"&&penalMatch){
       return{pts:sc.direction+(sc.penalty||0),tipo:"ganador_penal"};
     }
     return{pts:sc.direction,tipo:"ganador"};
@@ -579,9 +584,12 @@ function renderCard(m){
           <span style="color:var(--muted)">–</span>
           <input class="score-inp${sv2!==''?' filled':''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
             onchange="setProno('${m.id}','${p.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
-          <input type="text" value="${spv}" placeholder="🏆 penales"
-            onchange="setProno('${m.id}','${p.id}',2,this.value)"
-            style="width:90px;height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 6px;font-family:Inter,sans-serif;color:#1B5E20;outline:none">
+          <select onchange="setProno('${m.id}','${p.id}',2,this.value)"
+            style="height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
+            <option value="">🏆 penales</option>
+            <option value="${m.e1}" ${spv===m.e1?"selected":""}}>${m.e1}</option>
+            <option value="${m.e2}" ${spv===m.e2?"selected":""}}>${m.e2}</option>
+          </select>
         </div>
       </div>`;
     }
@@ -615,9 +623,12 @@ function renderCard(m){
         <input class="score-inp${v2!==''?' filled':''}" type="number" min="0" max="30" value="${v2}" placeholder="—"
           onchange="setScore('${m.id}',1,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
       </div>
-      ${isElim?`<input type="text" value="${realPenalVal}" placeholder="🏆 ganador penales"
-        onchange="setPenal('${m.id}',this.value)"
-        style="width:130px;height:24px;font-size:10px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 6px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;text-align:center">`:``}
+      ${isElim?`<select onchange="setPenal('${m.id}',this.value)"
+        style="height:26px;font-size:10px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
+        <option value="">🏆 ganador penales</option>
+        <option value="${m.e1}" ${realPenalVal===m.e1?"selected":""}>${m.e1}</option>
+        <option value="${m.e2}" ${realPenalVal===m.e2?"selected":""}>${m.e2}</option>
+      </select>`:``}
     </div>`;
   } else {
     const scoreStr=v1!==''?`${v1} – ${v2}`:"vs";
