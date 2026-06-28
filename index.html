@@ -410,16 +410,10 @@ document.querySelectorAll(".admin-mode").forEach(el=>el.classList.remove("visibl
 const PHASE_LABEL = {grupos:"FASE DE GRUPOS",dieciseis:"16AVOS",octavos:"OCTAVOS",cuartos:"CUARTOS",semis:"SEMIFINALES",tercero:"TERCER LUGAR",final:"GRAN FINAL"};
 
 // Recibe actualizaciones de Firebase en tiempo real
-let fbFirstLoad = true;
 window.__onFirebaseUpdate = (data) => {
   results = data;
   render();
-  if(fbFirstLoad){ 
-    fbFirstLoad=false; 
-    currentPhase="grupos"; 
-    renderTabs(); 
-    renderMatches();
-  }
+  renderMatches();
 };
 
 // ════════════════════════════════════════════════
@@ -478,7 +472,6 @@ function render(){
   renderPodium(R,T,E);
   renderStats(R,T,E);
   renderRanking(R,T,E,F);
-  renderMatches();
 }
 
 function renderPodium(R,T,E){
@@ -496,7 +489,12 @@ function renderPodium(R,T,E){
 }
 
 function renderStats(R,T,E){
-  const played=MATCHES.filter(m=>{const r=results[m.id];return r&&r[0]!=null&&r[1]!=null;}).length;
+  const played=MATCHES.filter(m=>{
+    const r=results[m.id];
+    if(!r) return false;
+    if(Array.isArray(r)) return r[0]!=null&&r[1]!=null;
+    return r.score&&r.score[0]!=null&&r.score[1]!=null;
+  }).length;
   const allE=Object.values(E).reduce((a,b)=>a+b,0);
   document.getElementById("stats").innerHTML=`
     <div class="stat"><div class="stat-label">Partidos Jugados</div><div class="stat-val">${played}</div><div class="stat-sub">de ${MATCHES.length} totales</div></div>
@@ -524,15 +522,7 @@ function renderTabs(){
   ).join("");
 }
 
-function switchPhase(key){ 
-  currentPhase=key; 
-  renderTabs(); 
-  renderMatches();
-  // Force re-render if container empty
-  setTimeout(()=>{ 
-    if(!document.getElementById("matches").innerHTML.trim()) renderMatches(); 
-  }, 100);
-}
+function switchPhase(key){ currentPhase=key; renderTabs(); renderMatches(); }
 
 function renderMatches(){
   const ms=MATCHES.filter(m=>m.fase===currentPhase);
@@ -713,12 +703,9 @@ document.querySelectorAll(".admin-mode").forEach(el=>el.style.display="none");
 document.getElementById("admin-lock-btn").style.display="flex";
 // Firebase cargará los datos via onValue. Mientras, render inicial vacío.
 currentPhase = "grupos";
+renderTabs();
 render();
-// Render tabs and matches after DOM is ready
-setTimeout(function(){
-  renderTabs();
-  renderMatches();
-}, 50);
+renderMatches();
 </script>
 </body>
 </html>
