@@ -489,18 +489,23 @@ function renderPodium(R,T,E){
 }
 
 function renderStats(R,T,E){
-  const played=MATCHES.filter(m=>{
-    const r=results[m.id];
-    if(!r) return false;
-    if(Array.isArray(r)) return r[0]!=null&&r[1]!=null;
-    return r.score&&r.score[0]!=null&&r.score[1]!=null;
-  }).length;
-  const allE=Object.values(E).reduce((a,b)=>a+b,0);
-  document.getElementById("stats").innerHTML=`
-    <div class="stat"><div class="stat-label">Partidos Jugados</div><div class="stat-val">${played}</div><div class="stat-sub">de ${MATCHES.length} totales</div></div>
-    <div class="stat"><div class="stat-label">Líder Actual</div><div class="stat-val" style="font-size:18px;padding-top:4px">${R[0]?.name.split(" ")[0]||"—"}</div><div class="stat-sub">${R[0]?T[R[0].id]+" pts":""}</div></div>
-    <div class="stat"><div class="stat-label">Total Exactos</div><div class="stat-val">${allE}</div><div class="stat-sub">entre los 4 participantes</div></div>
-    <div class="stat"><div class="stat-label">Pozo Total</div><div class="stat-val" style="font-size:18px;padding-top:4px;color:var(--gold)">$2,500</div><div class="stat-sub">MXN · 5 × $500</div></div>`;
+  try{
+    let played=0;
+    MATCHES.forEach(m=>{
+      try{
+        const r=results[m.id];
+        if(!r) return;
+        if(Array.isArray(r)){ if(r[0]!=null&&r[1]!=null) played++; }
+        else if(r&&r.score){ if(r.score[0]!=null&&r.score[1]!=null) played++; }
+      }catch(e){}
+    });
+    const allE=Object.values(E).reduce((a,b)=>a+b,0);
+    document.getElementById("stats").innerHTML=`
+      <div class="stat"><div class="stat-label">Partidos Jugados</div><div class="stat-val">${played}</div><div class="stat-sub">de ${MATCHES.length} totales</div></div>
+      <div class="stat"><div class="stat-label">Líder Actual</div><div class="stat-val" style="font-size:18px;padding-top:4px">${R[0]?R[0].name.split(" ")[0]:"—"}</div><div class="stat-sub">${R[0]?T[R[0].id]+" pts":""}</div></div>
+      <div class="stat"><div class="stat-label">Total Exactos</div><div class="stat-val">${allE}</div><div class="stat-sub">entre los 5 participantes</div></div>
+      <div class="stat"><div class="stat-label">Pozo Total</div><div class="stat-val" style="font-size:18px;padding-top:4px;color:var(--gold)">$2,500</div><div class="stat-sub">MXN · 5 × $500</div></div>`;
+  }catch(e){ console.error("renderStats error:",e); }
 }
 
 function renderRanking(R,T,E,F){
@@ -525,17 +530,20 @@ function renderTabs(){
 function switchPhase(key){ currentPhase=key; renderTabs(); renderMatches(); }
 
 function renderMatches(){
-  const ms=MATCHES.filter(m=>m.fase===currentPhase);
-  const byDate={};
-  ms.forEach(m=>{ if(!byDate[m.fecha])byDate[m.fecha]=[]; byDate[m.fecha].push(m); });
-  document.getElementById("matches").innerHTML=Object.entries(byDate).map(([fecha,arr])=>`
-    <div class="match-section">
-      <div class="day-hdr">
-        <span class="day-lbl">${fecha}</span>
-        <span class="day-phase">${PHASE_LABEL[currentPhase]}</span>
-      </div>
-      ${arr.map(renderCard).join("")}
-    </div>`).join("");
+  try{
+    const ms=MATCHES.filter(m=>m.fase===currentPhase);
+    const byDate={};
+    ms.forEach(m=>{ if(!byDate[m.fecha])byDate[m.fecha]=[]; byDate[m.fecha].push(m); });
+    const html=Object.entries(byDate).map(([fecha,arr])=>`
+      <div class="match-section">
+        <div class="day-hdr">
+          <span class="day-lbl">${fecha}</span>
+          <span class="day-phase">${PHASE_LABEL[currentPhase]||""}</span>
+        </div>
+        ${arr.map(m=>{ try{return renderCard(m);}catch(e){console.error("renderCard error",m.id,e);return "";} }).join("")}
+      </div>`).join("");
+    document.getElementById("matches").innerHTML=html||"<p style='color:var(--dim);padding:20px'>No hay partidos para esta fase</p>";
+  }catch(e){ console.error("renderMatches error:",e); }
 }
 
 function renderCard(m){
