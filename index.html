@@ -414,7 +414,12 @@ let fbFirstLoad = true;
 window.__onFirebaseUpdate = (data) => {
   results = data;
   render();
-  if(fbFirstLoad){ fbFirstLoad=false; currentPhase="grupos"; renderTabs(); renderMatches(); }
+  if(fbFirstLoad){ 
+    fbFirstLoad=false; 
+    currentPhase="grupos"; 
+    renderTabs(); 
+    renderMatches();
+  }
 };
 
 // ════════════════════════════════════════════════
@@ -519,7 +524,15 @@ function renderTabs(){
   ).join("");
 }
 
-function switchPhase(key){ currentPhase=key; renderTabs(); renderMatches(); }
+function switchPhase(key){ 
+  currentPhase=key; 
+  renderTabs(); 
+  renderMatches();
+  // Force re-render if container empty
+  setTimeout(()=>{ 
+    if(!document.getElementById("matches").innerHTML.trim()) renderMatches(); 
+  }, 100);
+}
 
 function renderMatches(){
   const ms=MATCHES.filter(m=>m.fase===currentPhase);
@@ -701,8 +714,11 @@ document.getElementById("admin-lock-btn").style.display="flex";
 // Firebase cargará los datos via onValue. Mientras, render inicial vacío.
 currentPhase = "grupos";
 render();
-renderTabs();
-renderMatches();
+// Render tabs and matches after DOM is ready
+setTimeout(function(){
+  renderTabs();
+  renderMatches();
+}, 50);
 </script>
 </body>
 </html>
