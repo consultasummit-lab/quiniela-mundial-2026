@@ -413,8 +413,6 @@ const PHASE_LABEL = {grupos:"FASE DE GRUPOS",dieciseis:"16AVOS",octavos:"OCTAVOS
 window.__onFirebaseUpdate = (data) => {
   results = data;
   render();
-  renderTabs();
-  renderMatches();
 };
 
 // ════════════════════════════════════════════════
@@ -473,7 +471,6 @@ function render(){
   renderPodium(R,T,E);
   renderStats(R,T,E);
   renderRanking(R,T,E,F);
-  renderTabs();
   renderMatches();
 }
 
@@ -700,8 +697,9 @@ isAdmin = false;
 document.querySelectorAll(".admin-mode").forEach(el=>el.style.display="none");
 document.getElementById("admin-lock-btn").style.display="flex";
 // Firebase cargará los datos via onValue. Mientras, render inicial vacío.
-render();
+currentPhase = "grupos";
 renderTabs();
+render();
 </script>
 </body>
 </html>
