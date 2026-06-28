@@ -410,9 +410,11 @@ document.querySelectorAll(".admin-mode").forEach(el=>el.classList.remove("visibl
 const PHASE_LABEL = {grupos:"FASE DE GRUPOS",dieciseis:"16AVOS",octavos:"OCTAVOS",cuartos:"CUARTOS",semis:"SEMIFINALES",tercero:"TERCER LUGAR",final:"GRAN FINAL"};
 
 // Recibe actualizaciones de Firebase en tiempo real
+let fbFirstLoad = true;
 window.__onFirebaseUpdate = (data) => {
   results = data;
   render();
+  if(fbFirstLoad){ fbFirstLoad=false; currentPhase="grupos"; renderTabs(); renderMatches(); }
 };
 
 // ════════════════════════════════════════════════
@@ -698,8 +700,9 @@ document.querySelectorAll(".admin-mode").forEach(el=>el.style.display="none");
 document.getElementById("admin-lock-btn").style.display="flex";
 // Firebase cargará los datos via onValue. Mientras, render inicial vacío.
 currentPhase = "grupos";
-renderTabs();
 render();
+renderTabs();
+renderMatches();
 </script>
 </body>
 </html>
