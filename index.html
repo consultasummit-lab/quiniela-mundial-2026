@@ -413,6 +413,8 @@ const PHASE_LABEL = {grupos:"FASE DE GRUPOS",dieciseis:"16AVOS",octavos:"OCTAVOS
 window.__onFirebaseUpdate = (data) => {
   results = data;
   render();
+  renderTabs();
+  renderMatches();
 };
 
 // ════════════════════════════════════════════════
@@ -471,6 +473,7 @@ function render(){
   renderPodium(R,T,E);
   renderStats(R,T,E);
   renderRanking(R,T,E,F);
+  renderTabs();
   renderMatches();
 }
 
