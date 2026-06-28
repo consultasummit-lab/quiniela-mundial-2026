@@ -282,9 +282,9 @@ const PARTICIPANTS = [
 ];
 const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣"];
 const SCORING = {
-  grupos:{exact:3,direction:1}, dieciseis:{exact:5,direction:2},
-  octavos:{exact:5,direction:2}, cuartos:{exact:8,direction:3},
-  semis:{exact:8,direction:3}, tercero:{exact:15,direction:5}, final:{exact:15,direction:5},
+  grupos:{exact:3,direction:1,penalty:0}, dieciseis:{exact:5,direction:2,penalty:3},
+  octavos:{exact:5,direction:2,penalty:3}, cuartos:{exact:8,direction:3,penalty:4},
+  semis:{exact:8,direction:3,penalty:4}, tercero:{exact:15,direction:5,penalty:6}, final:{exact:15,direction:5,penalty:6},
 };
 const PHASES = [
   {key:"grupos",label:"⚽ Grupos"},{key:"dieciseis",label:"⚔️ 16avos"},
@@ -365,22 +365,22 @@ const MATCHES = [
   {id:"m71", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Argelia",        e2:"Austria",        fase:"grupos",    p:{javier:[0,2],omar:[1,1],lalo:[1,1],jorge:[3,2],kike:[0,1]}},
   {id:"m72", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Jordania",       e2:"Argentina",      fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,3],jorge:[0,5],kike:[0,3]}},
   // Eliminatorias
-  {id:"m73", fecha:"Dom 28 Jun",hora:"",grp:"P73", e1:"2°A",         e2:"2°B",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m74", fecha:"Lun 29 Jun",hora:"",grp:"P74", e1:"1°C",         e2:"2°D",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m75", fecha:"Lun 29 Jun",hora:"",grp:"P75", e1:"1°F",         e2:"2°C",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m76", fecha:"Mar 30 Jun",hora:"",grp:"P76", e1:"1°E",         e2:"3°ABCDF",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m77", fecha:"Mar 30 Jun",hora:"",grp:"P77", e1:"1°B",         e2:"3°AEGHIJ",     fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m78", fecha:"Mar 30 Jun",hora:"",grp:"P78", e1:"2°E",         e2:"2°I",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m79", fecha:"Mar 30 Jun",hora:"",grp:"P79", e1:"1°A",         e2:"3°CEFHI",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m80", fecha:"Mié 1 Jul", hora:"",grp:"P80", e1:"1°L",         e2:"3°EHIJK",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m81", fecha:"Mié 1 Jul", hora:"",grp:"P81", e1:"1°D",         e2:"3°BEFIJ",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m82", fecha:"Mié 1 Jul", hora:"",grp:"P82", e1:"1°G",         e2:"3°AEHIJ",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m83", fecha:"Jue 2 Jul", hora:"",grp:"P83", e1:"2°K",         e2:"2°L",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m84", fecha:"Jue 2 Jul", hora:"",grp:"P84", e1:"1°H",         e2:"2°J",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m85", fecha:"Jue 2 Jul", hora:"",grp:"P85", e1:"1°B",         e2:"3°EFGIJ",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m86", fecha:"Vie 3 Jul", hora:"",grp:"P86", e1:"1°J",         e2:"2°H",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m87", fecha:"Vie 3 Jul", hora:"",grp:"P87", e1:"1°K",         e2:"3°DEIJL",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m88", fecha:"Vie 3 Jul", hora:"",grp:"P88", e1:"2°D",         e2:"2°G",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m73", fecha:"Dom 28 Jun",hora:"",grp:"P73", e1:"Sudáfrica",         e2:"Canadá",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m74", fecha:"Lun 29 Jun",hora:"",grp:"P74", e1:"Alemania",         e2:"Paraguay",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m75", fecha:"Lun 29 Jun",hora:"",grp:"P75", e1:"Países Bajos",         e2:"Marruecos",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m76", fecha:"Mar 30 Jun",hora:"",grp:"P76", e1:"Brasil",         e2:"Japón",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m77", fecha:"Mar 30 Jun",hora:"",grp:"P77", e1:"Francia",         e2:"Suecia",     fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m78", fecha:"Mar 30 Jun",hora:"",grp:"P78", e1:"Costa de Marfil",         e2:"Noruega",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m79", fecha:"Mar 30 Jun",hora:"",grp:"P79", e1:"México",         e2:"Ecuador",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m80", fecha:"Mié 1 Jul", hora:"",grp:"P80", e1:"Inglaterra",         e2:"RD Congo",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m81", fecha:"Mié 1 Jul", hora:"",grp:"P81", e1:"Estados Unidos",         e2:"Bosnia y Herz.",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m82", fecha:"Mié 1 Jul", hora:"",grp:"P82", e1:"Bélgica",         e2:"Senegal",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m83", fecha:"Jue 2 Jul", hora:"",grp:"P83", e1:"Colombia",         e2:"Ghana",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m84", fecha:"Jue 2 Jul", hora:"",grp:"P84", e1:"España",         e2:"Austria",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m85", fecha:"Jue 2 Jul", hora:"",grp:"P85", e1:"Portugal",         e2:"Croacia",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m86", fecha:"Vie 3 Jul", hora:"",grp:"P86", e1:"Suiza",         e2:"Argelia",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m87", fecha:"Vie 3 Jul", hora:"",grp:"P87", e1:"Australia",         e2:"Egipto",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m88", fecha:"Vie 3 Jul", hora:"",grp:"P88", e1:"Argentina",         e2:"Cabo Verde",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m89", fecha:"Sáb 4 Jul", hora:"",grp:"P89", e1:"G.P74",       e2:"G.P77",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m90", fecha:"Sáb 4 Jul", hora:"",grp:"P90", e1:"G.P73",       e2:"G.P75",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m91", fecha:"Dom 5 Jul", hora:"",grp:"P91", e1:"G.P76",       e2:"G.P78",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
@@ -419,11 +419,17 @@ window.__onFirebaseUpdate = (data) => {
 // MOTOR
 // ════════════════════════════════════════════════
 function winner(g1,g2){ return g1>g2?"home":g2>g1?"away":"draw"; }
-function scoreMatch(r1,r2,p1,p2,fase){
+function scoreMatch(r1,r2,p1,p2,fase,realPenal,predPenal){
   if(r1==null||r2==null||p1==null||p2==null) return{pts:0,tipo:"pendiente"};
   const sc=SCORING[fase]||SCORING.grupos;
   if(r1===p1&&r2===p2) return{pts:sc.exact,tipo:"exacto"};
-  if(winner(r1,r2)===winner(p1,p2)) return{pts:sc.direction,tipo:"ganador"};
+  if(winner(r1,r2)===winner(p1,p2)){
+    if(winner(r1,r2)==="draw"&&realPenal&&predPenal&&
+       realPenal.trim().toLowerCase()===predPenal.trim().toLowerCase()){
+      return{pts:sc.direction+(sc.penalty||0),tipo:"ganador_penal"};
+    }
+    return{pts:sc.direction,tipo:"ganador"};
+  }
   return{pts:0,tipo:"fallado"};
 }
 function calcTotals(){
@@ -434,17 +440,19 @@ function calcTotals(){
     const r1=Array.isArray(r)?r[0]:(r&&r.score?r.score[0]:null);
     const r2=Array.isArray(r)?r[1]:(r&&r.score?r.score[1]:null);
     const isElim = m.fase!=="grupos";
+    const realPenal = (r&&!Array.isArray(r)&&r.penal)?r.penal:null;
     PARTICIPANTS.forEach(p=>{
-      let p1,p2;
+      let p1,p2,predPenal=null;
       if(isElim){
         const sp=(r&&r.pronos)?r.pronos[p.id]:null;
         p1=sp?sp[0]:null; p2=sp?sp[1]:null;
+        predPenal=sp?sp[2]:null;
       } else {
         const fp=m.p[p.id]||[null,null];
         p1=fp[0]; p2=fp[1];
       }
-      const{pts,tipo}=scoreMatch(r1,r2,p1,p2,m.fase);
-      T[p.id]+=pts; if(tipo==="exacto")E[p.id]++;
+      const{pts,tipo}=scoreMatch(r1,r2,p1,p2,m.fase,realPenal,predPenal);
+      T[p.id]+=pts; if(tipo==="exacto"||tipo==="ganador_penal")E[p.id]++;
       if(m.fase==="grupos")F[p.id].grupos+=pts; else F[p.id].elim+=pts;
     });
   });
@@ -549,37 +557,59 @@ function renderCard(m){
     // Admin elim: show input fields per participant
     if(isElim && isAdmin){
       const sv1=p1!=null?p1:"", sv2=p2!=null?p2:"";
-      return`<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px">
-        <span class="pron-name" style="color:var(--text)">${p.name.split(" ")[0]}</span>
-        <div style="display:flex;align-items:center;gap:6px">
+      const spv=p2!=null&&p1!=null&&p1===p2?predPenal||"":"";
+      return`<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px">
+        <span class="pron-name" style="color:var(--text);margin-bottom:2px">${p.name.split(" ")[0]}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <input class="score-inp${sv1!==''?' filled':''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
             onchange="setProno('${m.id}','${p.id}',0,this.value)" style="width:32px;height:30px;font-size:13px">
           <span style="color:var(--muted)">–</span>
           <input class="score-inp${sv2!==''?' filled':''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
             onchange="setProno('${m.id}','${p.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
+          <input type="text" value="${spv}" placeholder="🏆 penales"
+            onchange="setProno('${m.id}','${p.id}',2,this.value)"
+            style="width:90px;height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 6px;font-family:Inter,sans-serif;color:#1B5E20;outline:none">
         </div>
       </div>`;
     }
 
     if(p1==null&&p2==null) return`<div class="pron pendiente"><span>⏳</span><span class="pron-name">${p.name.split(" ")[0]}</span><span class="pron-score" style="color:var(--muted)">por definir</span></div>`;
-    const{pts,tipo}=scoreMatch(r[0],r[1],p1,p2,m.fase);
-    const icon={exacto:"✅",ganador:"🔵",fallado:"❌",pendiente:"⏳"}[tipo];
+    const realPen=(r&&!Array.isArray(r)&&r.penal)?r.penal:null;
+    const{pts,tipo}=scoreMatch(rr[0],rr[1],p1,p2,m.fase,realPen,predPenal);
+    const icon={exacto:"✅",ganador:"🔵",ganador_penal:"🟢",fallado:"❌",pendiente:"⏳"}[tipo]||"⏳";
     const pts_lbl=tipo==="pendiente"?`+${sc.exact}/${sc.direction}`:tipo==="fallado"?"0":`+${pts}`;
-    return`<div class="pron ${tipo}">
+    const penalLabel=predPenal?` 🏆${predPenal}`:"";
+    return`<div class="pron ${tipo==="ganador_penal"?"ganador":tipo}">
       <span>${icon}</span>
       <span class="pron-name">${p.name.split(" ")[0]}</span>
-      <span class="pron-score">${p1} – ${p2}</span>
+      <span class="pron-score">${p1} – ${p2}${penalLabel}</span>
       <span class="pron-pts">${pts_lbl}</span>
     </div>`;
   }).join("");
 
-  const scoreInputs=isAdmin
-    ?`<input class="score-inp${v1!==''?' filled':''}" type="number" min="0" max="30" value="${v1}" placeholder="—"
-        onchange="setScore('${m.id}',0,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
-      <span class="score-dash">–</span>
-      <input class="score-inp${v2!==''?' filled':''}" type="number" min="0" max="30" value="${v2}" placeholder="—"
-        onchange="setScore('${m.id}',1,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">`
-    :`<span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:${v1!==''?'var(--green)':'var(--muted)'}">${v1!==''?`${v1} – ${v2}`:"vs"}</span>`;
+  const realPenalVal=(r&&!Array.isArray(r)&&r.penal)?r.penal:"";
+  let scoreInputs;
+  if(isAdmin){
+    scoreInputs=`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="display:flex;align-items:center;gap:5px">
+        <input class="score-inp${v1!==''?' filled':''}" type="number" min="0" max="30" value="${v1}" placeholder="—"
+          onchange="setScore('${m.id}',0,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
+        <span class="score-dash">–</span>
+        <input class="score-inp${v2!==''?' filled':''}" type="number" min="0" max="30" value="${v2}" placeholder="—"
+          onchange="setScore('${m.id}',1,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
+      </div>
+      ${isElim?`<input type="text" value="${realPenalVal}" placeholder="🏆 ganador penales"
+        onchange="setPenal('${m.id}',this.value)"
+        style="width:130px;height:24px;font-size:10px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 6px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;text-align:center">`:``}
+    </div>`;
+  } else {
+    const scoreStr=v1!==''?`${v1} – ${v2}`:"vs";
+    const penalStr=isElim&&realPenalVal?` 🏆 ${realPenalVal}`:"";
+    scoreInputs=`<div style="text-align:center">
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:${v1!==''?'var(--green)':'var(--muted)'}">${scoreStr}</span>
+      ${penalStr?`<div style="font-size:10px;color:#66BB6A;margin-top:2px">${penalStr}</div>`:""}
+    </div>`;
+  }
 
   return`<div class="match-card">
     <div class="match-hdr">
@@ -597,8 +627,12 @@ function renderCard(m){
 function setProno(matchId, participantId, pos, val){
   if(!results[matchId]||Array.isArray(results[matchId])) results[matchId]={score:[null,null],pronos:{}};
   if(!results[matchId].pronos) results[matchId].pronos={};
-  if(!results[matchId].pronos[participantId]) results[matchId].pronos[participantId]=[null,null];
-  results[matchId].pronos[participantId][pos] = val===""?null:parseInt(val);
+  if(!results[matchId].pronos[participantId]) results[matchId].pronos[participantId]=[null,null,null];
+  if(pos===2){
+    results[matchId].pronos[participantId][2] = val===""?null:val.trim();
+  } else {
+    results[matchId].pronos[participantId][pos] = val===""?null:parseInt(val);
+  }
   render();
   renderMatches();
 }
@@ -624,9 +658,24 @@ function toggleAdmin(on){
 function exitAdmin(){ isAdmin=false; toggleAdmin(false); render(); }
 
 function setScore(id,pos,val){
-  if(!results[id]) results[id]=[null,null];
-  results[id][pos]=val===""?null:parseInt(val);
+  const match=MATCHES.find(x=>x.id===id);
+  const isElim=match&&match.fase!=="grupos";
+  if(isElim){
+    if(!results[id]||Array.isArray(results[id])) results[id]={score:[null,null],pronos:{},penal:null};
+    if(!results[id].score) results[id].score=[null,null];
+    results[id].score[pos]=val===""?null:parseInt(val);
+  } else {
+    if(!results[id]||!Array.isArray(results[id])) results[id]=[null,null];
+    results[id][pos]=val===""?null:parseInt(val);
+  }
   render();
+  renderMatches();
+}
+function setPenal(id,val){
+  if(!results[id]||Array.isArray(results[id])) results[id]={score:[null,null],pronos:{},penal:null};
+  results[id].penal=val===""?null:val.trim();
+  render();
+  renderMatches();
 }
 
 async function saveToFirebase(){
