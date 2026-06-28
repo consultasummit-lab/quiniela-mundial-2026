@@ -558,10 +558,10 @@ function renderCard(m){
   const storedPronos = (r&&!Array.isArray(r)&&r.pronos) ? r.pronos : {};
 
   const prons=PARTICIPANTS.map(p=>{
-    let p1,p2;
+    let p1,p2,predPenal=null;
     if(isElim){
       const sp=storedPronos[p.id];
-      p1=sp?sp[0]:null; p2=sp?sp[1]:null;
+      p1=sp?sp[0]:null; p2=sp?sp[1]:null; predPenal=sp?sp[2]:null;
     } else {
       const fp=m.p[p.id]||[null,null];
       p1=fp[0]; p2=fp[1];
