@@ -511,13 +511,18 @@ window.__onKickoffsUpdate = (data) => {
 // ════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════
-function isMatchLocked(matchId) {
-  // Un partido está "bloqueado" (pronósticos ocultos) si:
-  // 1. Tiene kickoff configurado Y la hora actual < kickoff
+// Antes del kickoff → participante PUEDE editar su pronóstico
+function canEdit(matchId) {
   const ko = kickoffs[matchId];
-  if (!ko) return false; // sin kickoff = no bloqueado (visible)
-  const koTime = new Date(ko).getTime();
-  return Date.now() < koTime;
+  if (!ko) return true; // sin kickoff configurado = abierto
+  return Date.now() < new Date(ko).getTime();
+}
+
+// Después del kickoff → todos VEN los pronósticos (se revelan)
+function isRevealed(matchId) {
+  const ko = kickoffs[matchId];
+  if (!ko) return false; // sin kickoff = no revelado aún
+  return Date.now() >= new Date(ko).getTime();
 }
 
 function getElimProno(matchId, participantId) {
@@ -663,13 +668,19 @@ function switchPhase(key) { currentPhase = key; renderTabs(); renderMatches(); }
 function renderKickoffPanel() {
   const elimMatches = MATCHES.filter(m => m.fase !== "grupos");
   document.getElementById("kickoff-list").innerHTML = elimMatches.map(m => {
-    const locked = isMatchLocked(m.id);
     const ko = kickoffs[m.id] || "";
+    const revealed = isRevealed(m.id);
+    const editable = canEdit(m.id);
+    // Estado: sin kickoff → sin configurar; antes kickoff → editable/sellado para otros; después kickoff → revelado
+    const status = !ko
+      ? `<span class="kickoff-status" style="color:var(--muted)">⚙️ Sin configurar</span>`
+      : revealed
+        ? `<span class="kickoff-status open">🟢 Revelado</span>`
+        : `<span class="kickoff-status locked">🔒 Sellado (abre al kickoff)</span>`;
     return `<div class="kickoff-row">
       <span class="kickoff-label">${m.grp} · ${m.e1} vs ${m.e2}</span>
-      <input class="kickoff-input" type="datetime-local" id="ko_${m.id}" value="${ko}"
-        title="Hora de inicio (CDMX)">
-      <span class="kickoff-status ${locked ? 'locked' : 'open'}">${locked ? '🔒 Sellado' : '🟢 Abierto'}</span>
+      <input class="kickoff-input" type="datetime-local" id="ko_${m.id}" value="${ko}" title="Hora de inicio (CDMX)">
+      ${status}
     </div>`;
   }).join("");
 }
@@ -693,17 +704,22 @@ function renderCard(m) {
   const rr = Array.isArray(r) ? r : (r.score || [null, null]);
   const v1 = rr[0] != null ? rr[0] : "", v2 = rr[1] != null ? rr[1] : "";
   const isElim = m.fase !== "grupos";
-  const locked = isElim && isMatchLocked(m.id);
-  const storedPronos = (r && !Array.isArray(r) && r.pronos) ? r.pronos : {};
 
   const prons = PARTICIPANTS.map(p => {
-    // Modo admin: siempre muestra inputs de captura
+    // ── LÓGICA DE VISIBILIDAD ─────────────────────────────────────────
+    // canEdit(m.id)   = true  → partido no ha iniciado, edición abierta
+    // isRevealed(m.id)= true  → partido iniciado, todos ven pronósticos
+    // Si hay kickoff pero aún no ha pasado: participante propio edita,
+    //   los demás ven 🔒. Admin siempre ve inputs de captura.
+    // ─────────────────────────────────────────────────────────────────
+
+    // ADMIN: siempre ve inputs de captura de pronóstico (sin restricción)
     if (isElim && isAdmin) {
       const prono = getElimProno(m.id, p.id);
       const sv1 = prono.p1 != null ? prono.p1 : "";
       const sv2 = prono.p2 != null ? prono.p2 : "";
-      const spv = (prono.p1 != null && prono.p2 != null && prono.p1 === prono.p2) ? (prono.penal || "") : "";
       const showPenalSelect = sv1 !== "" && sv2 !== "" && sv1 == sv2;
+      const spv = showPenalSelect ? (prono.penal || "") : "";
       return `<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px">
         <span class="pron-name" style="color:var(--text);margin-bottom:2px">${p.name.split(" ")[0]}</span>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -722,40 +738,40 @@ function renderCard(m) {
       </div>`;
     }
 
-    // Modo participante propio: muestra input si el partido no está sellado
+    // PARTICIPANTE PROPIO (logueado con su llave)
     if (isElim && currentParticipantId === p.id) {
-      if (locked) {
-        return `<div class="pron locked">
-          <span>🔒</span>
-          <span class="pron-name">${p.name.split(" ")[0]}</span>
-          <span class="pron-score">Sellado</span>
-        </div>`;
-      }
       const prono = getElimProno(m.id, p.id);
       const sv1 = prono.p1 != null ? prono.p1 : "";
       const sv2 = prono.p2 != null ? prono.p2 : "";
       const showPenalSelect = sv1 !== "" && sv2 !== "" && sv1 == sv2;
       const spv = showPenalSelect ? (prono.penal || "") : "";
-      return `<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px;border-color:#5C9FFF44">
-        <span class="pron-name" style="color:var(--blue);margin-bottom:2px">✏️ ${p.name.split(" ")[0]}</span>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <input class="score-inp${sv1 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
-            onchange="setMyProno('${m.id}',0,this.value)" style="width:32px;height:30px;font-size:13px">
-          <span style="color:var(--muted)">–</span>
-          <input class="score-inp${sv2 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
-            onchange="setMyProno('${m.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
-          ${showPenalSelect ? `<select onchange="setMyProno('${m.id}',2,this.value)"
-            style="height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
-            <option value="">🏆 penales</option>
-            <option value="${m.e1}" ${spv === m.e1 ? "selected" : ""}>${m.e1}</option>
-            <option value="${m.e2}" ${spv === m.e2 ? "selected" : ""}>${m.e2}</option>
-          </select>` : ``}
-        </div>
-      </div>`;
+
+      if (canEdit(m.id)) {
+        // Antes del kickoff: puede editar su propio pronóstico
+        return `<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px;border-color:#5C9FFF44">
+          <span class="pron-name" style="color:var(--blue);margin-bottom:2px">✏️ ${p.name.split(" ")[0]}</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input class="score-inp${sv1 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
+              onchange="setMyProno('${m.id}',0,this.value)" style="width:32px;height:30px;font-size:13px">
+            <span style="color:var(--muted)">–</span>
+            <input class="score-inp${sv2 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
+              onchange="setMyProno('${m.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
+            ${showPenalSelect ? `<select onchange="setMyProno('${m.id}',2,this.value)"
+              style="height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
+              <option value="">🏆 penales</option>
+              <option value="${m.e1}" ${spv === m.e1 ? "selected" : ""}>${m.e1}</option>
+              <option value="${m.e2}" ${spv === m.e2 ? "selected" : ""}>${m.e2}</option>
+            </select>` : ``}
+          </div>
+        </div>`;
+      } else {
+        // Después del kickoff: ya no puede editar, se muestra como lectura normal (cae al bloque de abajo)
+      }
     }
 
-    // Modo lectura para elim: si está bloqueado, mostrar 🔒
-    if (isElim && locked && !isAdmin) {
+    // LECTURA (todos, incluyendo participante propio después del kickoff)
+    // Si el partido aún no inicia y no es el participante logueado → 🔒
+    if (isElim && !isRevealed(m.id) && currentParticipantId !== p.id) {
       return `<div class="pron locked">
         <span>🔒</span>
         <span class="pron-name">${p.name.split(" ")[0]}</span>
