@@ -10,10 +10,6 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  // ════════════════════════════════════════════════
-  // 🔧 REEMPLAZA ESTOS VALORES CON TU CONFIGURACIÓN
-  //    DE FIREBASE (paso 3 de las instrucciones)
-  // ════════════════════════════════════════════════
   const firebaseConfig = {
     apiKey:            "AIzaSyBkQIsFyr8XNHlKHJOih4VFCunvaFvaFJ8",
     authDomain:        "quiniela-mundial-2026-d1dc8.firebaseapp.com",
@@ -26,19 +22,21 @@
 
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
-  const resultsRef = ref(db, "quiniela2026/results");
+  const resultsRef  = ref(db, "quiniela2026/results");
+  const kickoffsRef = ref(db, "quiniela2026/kickoffs");
 
-  // ── Escucha cambios en tiempo real ──
-  onValue(resultsRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    window.__fbResults = data;
-    if (window.__onFirebaseUpdate) window.__onFirebaseUpdate(data);
+  onValue(resultsRef, (snap) => {
+    window.__fbResults = snap.val() || {};
+    if (window.__onFirebaseUpdate) window.__onFirebaseUpdate(window.__fbResults);
   });
 
-  // ── Expone función global para guardar ──
-  window.__fbSave = async (results) => {
-    await set(resultsRef, results);
-  };
+  onValue(kickoffsRef, (snap) => {
+    window.__fbKickoffs = snap.val() || {};
+    if (window.__onKickoffsUpdate) window.__onKickoffsUpdate(window.__fbKickoffs);
+  });
+
+  window.__fbSave = async (results) => { await set(resultsRef, results); };
+  window.__fbSaveKickoffs = async (kickoffs) => { await set(kickoffsRef, kickoffs); };
 </script>
 
 <style>
@@ -134,12 +132,14 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
 .pron.ganador{ background:#2979FF14; border-color:#2979FF44; }
 .pron.fallado{ background:#FF3D0010; border-color:#FF3D0025; }
 .pron.pendiente{ background:var(--bg4); border-color:var(--border); }
+.pron.locked{ background:#FFD60010; border-color:#FFD60033; }
 .pron-name{ font-weight:600; color:var(--dim); flex:1; }
 .pron-score{ font-family:'JetBrains Mono',monospace; font-weight:700; }
 .pron.exacto  .pron-score{ color:var(--green); }
 .pron.ganador .pron-score{ color:var(--blue); }
 .pron.fallado .pron-score{ color:var(--red); }
 .pron.pendiente .pron-score{ color:var(--muted); }
+.pron.locked .pron-score{ color:var(--gold); }
 .pron-pts{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; margin-left:auto; }
 .pron.exacto  .pron-pts{ color:var(--green); }
 .pron.ganador .pron-pts{ color:var(--blue); }
@@ -150,6 +150,9 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
 .admin-mode.visible{ display:block; }
 .admin-banner{ background:#FFD60022; border:1px solid var(--gold); border-radius:8px; padding:10px 16px; margin-bottom:20px; font-size:13px; color:var(--gold); display:flex; align-items:center; gap:8px; }
 
+/* PARTICIPANT BANNER */
+.participant-banner{ background:#5C9FFF18; border:1px solid #5C9FFF44; border-radius:8px; padding:10px 16px; margin-bottom:20px; font-size:13px; color:var(--blue); display:flex; align-items:center; gap:8px; }
+
 /* SAVE */
 .save-btn{ flex:1; background:var(--gold); color:#000; border:none; border-radius:50px; padding:12px 24px; font-weight:700; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; box-shadow:0 4px 20px #FFD60055; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .15s; }
 .save-btn:hover{ transform:translateY(-2px); }
@@ -158,11 +161,11 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
 .toast{ position:fixed; bottom:90px; right:20px; background:var(--green); color:#000; border-radius:8px; padding:10px 18px; font-weight:700; font-size:13px; z-index:300; opacity:0; transition:opacity .3s; pointer-events:none; }
 .toast.show{ opacity:1; }
 
-/* ADMIN LOGIN */
+/* LOGIN MODAL */
 .admin-lock{ background:var(--bg3); border:1px solid var(--border); border-radius:50px; padding:10px 18px; font-size:12px; color:var(--dim); cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap; flex-shrink:0; }
 .modal-overlay{ display:none; position:fixed; inset:0; background:#000A; z-index:500; align-items:center; justify-content:center; }
 .modal-overlay.open{ display:flex; }
-.modal{ background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:28px; width:320px; }
+.modal{ background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:28px; width:340px; }
 .modal h2{ font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; margin-bottom:6px; }
 .modal p{ font-size:13px; color:var(--dim); margin-bottom:20px; }
 .modal input{ width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-size:14px; font-family:'Inter',sans-serif; outline:none; margin-bottom:12px; }
@@ -172,6 +175,19 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
 .btn-cancel{ background:transparent; border:1px solid var(--border); color:var(--dim); border-radius:8px; padding:10px 16px; cursor:pointer; font-family:'Inter',sans-serif; }
 .modal-err{ font-size:12px; color:var(--red); margin-bottom:10px; display:none; }
 .modal-err.show{ display:block; }
+.modal-tabs{ display:flex; gap:4px; margin-bottom:16px; }
+.modal-tab{ flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--dim); font-size:12px; font-family:'Inter',sans-serif; cursor:pointer; transition:all .15s; }
+.modal-tab.active{ background:#FFD60022; border-color:var(--gold); color:var(--gold); font-weight:600; }
+
+/* KICKOFF ADMIN */
+.kickoff-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.kickoff-row:last-child{ border-bottom:none; }
+.kickoff-label{ flex:1; color:var(--dim); }
+.kickoff-input{ background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:12px; font-family:'JetBrains Mono',monospace; outline:none; width:140px; }
+.kickoff-input:focus{ border-color:var(--gold); }
+.kickoff-status{ font-size:10px; font-family:'JetBrains Mono',monospace; }
+.kickoff-status.locked{ color:var(--gold); }
+.kickoff-status.open{ color:var(--green); }
 
 @media(max-width:700px){
   .podium{ flex-direction:column; }
@@ -200,11 +216,20 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
   </div>
 </div>
 
-<!-- MODAL ADMIN -->
+<!-- MODAL LOGIN (Admin + Participante) -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <h2>🔐 Modo Admin</h2>
-    <p>Ingresa la contraseña para capturar resultados</p>
+    <h2>🔐 Acceso</h2>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-admin-btn" onclick="switchModalTab('admin')">Admin</button>
+      <button class="modal-tab" id="tab-part-btn" onclick="switchModalTab('participant')">Participante</button>
+    </div>
+    <div id="modal-admin-section">
+      <p>Contraseña de administrador para capturar resultados</p>
+    </div>
+    <div id="modal-part-section" style="display:none">
+      <p>Ingresa tu llave personal para subir tus pronósticos</p>
+    </div>
     <div class="modal-err" id="modal-err">Contraseña incorrecta</div>
     <input type="password" id="pwd-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')checkPwd()">
     <div class="modal-btns">
@@ -237,22 +262,36 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
     <h3>Tabla de Puntuación</h3>
     <div class="score-pills">
       <div class="score-pill">Grupos — <b>Exacto +3</b> · <span>Ganador/Empate +1</span></div>
-      <div class="score-pill">16avos/8vos — <b>Exacto +5</b> · <span>Ganador +2</span></div>
-      <div class="score-pill">4tos/Semis — <b>Exacto +8</b> · <span>Ganador +3</span></div>
-      <div class="score-pill">Final/3er — <b>Exacto +15</b> · <span>Ganador +5</span></div>
+      <div class="score-pill">16avos/8vos — <b>Exacto +5</b> · <span>Ganador +2</span> · <span>Penales +3</span></div>
+      <div class="score-pill">4tos/Semis — <b>Exacto +8</b> · <span>Ganador +3</span> · <span>Penales +4</span></div>
+      <div class="score-pill">Final/3er — <b>Exacto +15</b> · <span>Ganador +5</span> · <span>Penales +6</span></div>
     </div>
   </div>
 
-  <!-- ADMIN BANNER -->
+  <!-- BANNERS (admin / participante) -->
   <div class="admin-mode admin-banner" id="admin-banner">
-    ⚡ Modo Admin activo — puedes capturar resultados
-    <button onclick="exitAdmin()" style="margin-left:auto;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Salir</button>
+    ⚡ Modo Admin activo — capturas resultados y kickoffs
+    <button onclick="exitSession()" style="margin-left:auto;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Salir</button>
+  </div>
+  <div id="participant-banner" style="display:none" class="participant-banner">
+    👤 <span id="participant-banner-name"></span> — puedes capturar tus pronósticos para partidos no iniciados
+    <button onclick="exitSession()" style="margin-left:auto;background:transparent;border:1px solid #5C9FFF;color:#5C9FFF;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Salir</button>
+  </div>
+
+  <!-- PANEL KICKOFFS (solo admin) -->
+  <div class="admin-mode" id="kickoffs-panel" style="margin-bottom:20px">
+    <div class="info-box">
+      <h3>⏱ Gestión de Kickoffs — Horario de inicio por partido</h3>
+      <p style="font-size:11px;color:var(--dim);margin-bottom:12px">Ingresa la fecha/hora de inicio de cada partido. Una vez que la hora actual supere el kickoff, los pronósticos se revelan automáticamente. Formato: YYYY-MM-DDTHH:MM (hora CDMX)</p>
+      <div id="kickoff-list"></div>
+      <button onclick="saveKickoffs()" style="margin-top:12px;background:var(--gold);color:#000;border:none;border-radius:8px;padding:8px 18px;font-weight:700;font-size:12px;cursor:pointer">💾 Guardar Kickoffs</button>
+    </div>
   </div>
 
   <!-- PARTIDOS -->
   <div class="section-title" style="margin-top:8px">📋 Pronósticos por Partido</div>
   <div class="legend">
-    <span>✅ Exacto</span><span>🔵 Ganador/Empate</span><span>❌ Fallado</span><span>⏳ Pendiente</span>
+    <span>✅ Exacto</span><span>🔵 Ganador/Empate</span><span>❌ Fallado</span><span>⏳ Pendiente</span><span>🔒 Sellado</span>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="matches"></div>
@@ -260,18 +299,26 @@ body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; m
 
 <!-- BARRA INFERIOR -->
 <div class="bottom-bar">
-  <button class="admin-lock" id="admin-lock-btn" onclick="openModal()">🔐 Admin</button>
+  <button class="admin-lock" id="admin-lock-btn" onclick="openModal()">🔐 Acceso</button>
   <button class="save-btn admin-mode" id="save-btn" onclick="saveToFirebase()">💾 Guardar Resultados</button>
+  <button class="save-btn" id="save-pronos-btn" style="display:none;background:#5C9FFF" onclick="saveParticipantPronos()">💾 Guardar Mis Pronósticos</button>
 </div>
 <div class="toast" id="toast">✅ Guardado en tiempo real</div>
 
 <script>
 // ════════════════════════════════════════════════
-// DATOS
+// CONSTANTES
 // ════════════════════════════════════════════════
-
-// ⚠️ CAMBIA ESTA CONTRASEÑA por la que quieras
 const ADMIN_PASSWORD = "arete2026";
+
+// Llaves personales — cada participante tiene la suya
+const PARTICIPANT_KEYS = {
+  "javier2026": "javier",
+  "omar2026":   "omar",
+  "lalo2026":   "lalo",
+  "jorge2026":  "jorge",
+  "kike2026":   "kike",
+};
 
 const PARTICIPANTS = [
   { id:"javier", name:"Javier Cruz"   },
@@ -282,241 +329,319 @@ const PARTICIPANTS = [
 ];
 const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣"];
 const SCORING = {
-  grupos:{exact:3,direction:1,penalty:0}, dieciseis:{exact:5,direction:2,penalty:3},
-  octavos:{exact:5,direction:2,penalty:3}, cuartos:{exact:8,direction:3,penalty:4},
-  semis:{exact:8,direction:3,penalty:4}, tercero:{exact:15,direction:5,penalty:6}, final:{exact:15,direction:5,penalty:6},
+  grupos:   {exact:3, direction:1, penalty:0},
+  dieciseis:{exact:5, direction:2, penalty:3},
+  octavos:  {exact:5, direction:2, penalty:3},
+  cuartos:  {exact:8, direction:3, penalty:4},
+  semis:    {exact:8, direction:3, penalty:4},
+  tercero:  {exact:15,direction:5, penalty:6},
+  final:    {exact:15,direction:5, penalty:6},
 };
 const PHASES = [
-  {key:"grupos",label:"⚽ Grupos"},{key:"dieciseis",label:"⚔️ 16avos"},
-  {key:"octavos",label:"⚔️ 8vos"},{key:"cuartos",label:"🏟️ 4tos"},
-  {key:"semis",label:"🔥 Semis"},{key:"tercero",label:"🥉 3er Lugar"},{key:"final",label:"🏆 Final"},
+  {key:"grupos",   label:"⚽ Grupos"},
+  {key:"dieciseis",label:"⚔️ 16avos"},
+  {key:"octavos",  label:"⚔️ 8vos"},
+  {key:"cuartos",  label:"🏟️ 4tos"},
+  {key:"semis",    label:"🔥 Semis"},
+  {key:"tercero",  label:"🥉 3er Lugar"},
+  {key:"final",    label:"🏆 Final"},
 ];
+const PHASE_LABEL = {
+  grupos:"FASE DE GRUPOS", dieciseis:"16AVOS", octavos:"OCTAVOS",
+  cuartos:"CUARTOS", semis:"SEMIFINALES", tercero:"TERCER LUGAR", final:"GRAN FINAL"
+};
+
+// ── PARTIDOS ── orden cronológico real con fechas y horas correctas
 const MATCHES = [
-  {id:"m1",  fecha:"Jue 11 Jun",hora:"13:00",grp:"A",e1:"México",         e2:"Sudáfrica",      fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,1],jorge:[3,0],kike:[null,null]}},
-  {id:"m2",  fecha:"Jue 11 Jun",hora:"20:00",grp:"A",e1:"Corea del Sur",  e2:"Rep. Checa",     fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[1,1],jorge:[1,0],kike:[null,null]}},
-  {id:"m3",  fecha:"Vie 12 Jun",hora:"13:00",grp:"B",e1:"Canadá",         e2:"Bosnia y Herz.", fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[3,1],jorge:[1,1],kike:[null,null]}},
-  {id:"m4",  fecha:"Vie 12 Jun",hora:"19:00",grp:"D",e1:"Estados Unidos", e2:"Paraguay",       fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,0],jorge:[2,1],kike:[2,1]}},
-  {id:"m5",  fecha:"Sáb 13 Jun",hora:"13:00",grp:"B",e1:"Qatar",          e2:"Suiza",          fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
-  {id:"m6",  fecha:"Sáb 13 Jun",hora:"16:00",grp:"C",e1:"Brasil",         e2:"Marruecos",      fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,2],jorge:[1,1],kike:[2,1]}},
-  {id:"m7",  fecha:"Sáb 13 Jun",hora:"19:00",grp:"C",e1:"Haití",          e2:"Escocia",        fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,2],jorge:[0,3],kike:[0,2]}},
-  {id:"m8",  fecha:"Sáb 13 Jun",hora:"22:00",grp:"D",e1:"Australia",      e2:"Turquía",        fase:"grupos",    p:{javier:[1,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[0,1]}},
-  {id:"m9",  fecha:"Dom 14 Jun",hora:"11:00",grp:"E",e1:"Alemania",       e2:"Curazao",        fase:"grupos",    p:{javier:[4,0],omar:[5,0],lalo:[4,0],jorge:[6,0],kike:[3,0]}},
-  {id:"m10", fecha:"Dom 14 Jun",hora:"14:00",grp:"F",e1:"Países Bajos",   e2:"Japón",          fase:"grupos",    p:{javier:[2,1],omar:[1,0],lalo:[1,2],jorge:[2,0],kike:[2,1]}},
-  {id:"m11", fecha:"Dom 14 Jun",hora:"17:00",grp:"E",e1:"Costa de Marfil",e2:"Ecuador",        fase:"grupos",    p:{javier:[1,1],omar:[0,1],lalo:[1,1],jorge:[1,2],kike:[1,1]}},
-  {id:"m12", fecha:"Dom 14 Jun",hora:"20:00",grp:"F",e1:"Suecia",         e2:"Túnez",          fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[1,0]}},
-  {id:"m13", fecha:"Lun 15 Jun",hora:"10:00",grp:"H",e1:"España",         e2:"Cabo Verde",     fase:"grupos",    p:{javier:[3,0],omar:[4,0],lalo:[3,0],jorge:[5,0],kike:[3,0]}},
-  {id:"m14", fecha:"Lun 15 Jun",hora:"13:00",grp:"G",e1:"Bélgica",        e2:"Egipto",         fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[0,1],kike:[2,1]}},
-  {id:"m15", fecha:"Lun 15 Jun",hora:"16:00",grp:"H",e1:"Arabia Saudí",   e2:"Uruguay",        fase:"grupos",    p:{javier:[0,2],omar:[1,2],lalo:[0,2],jorge:[1,2],kike:[0,2]}},
-  {id:"m16", fecha:"Lun 15 Jun",hora:"19:00",grp:"G",e1:"Irán",           e2:"Nueva Zelanda",  fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,0],jorge:[2,1],kike:[1,0]}},
-  {id:"m17", fecha:"Mar 16 Jun",hora:"13:00",grp:"I",e1:"Francia",        e2:"Senegal",        fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[3,1],jorge:[3,2],kike:[3,1]}},
-  {id:"m18", fecha:"Mar 16 Jun",hora:"16:00",grp:"I",e1:"Irak",           e2:"Noruega",        fase:"grupos",    p:{javier:[0,2],omar:[0,3],lalo:[0,2],jorge:[1,3],kike:[0,2]}},
-  {id:"m19", fecha:"Mar 16 Jun",hora:"19:00",grp:"J",e1:"Argentina",      e2:"Argelia",        fase:"grupos",    p:{javier:[3,0],omar:[2,1],lalo:[3,1],jorge:[2,1],kike:[2,1]}},
-  {id:"m20", fecha:"Mar 16 Jun",hora:"22:00",grp:"J",e1:"Austria",        e2:"Jordania",       fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[1,0]}},
-  {id:"m21", fecha:"Mié 17 Jun",hora:"11:00",grp:"K",e1:"Portugal",       e2:"RD Congo",       fase:"grupos",    p:{javier:[3,0],omar:[4,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
-  {id:"m22", fecha:"Mié 17 Jun",hora:"14:00",grp:"L",e1:"Inglaterra",     e2:"Croacia",        fase:"grupos",    p:{javier:[2,1],omar:[2,0],lalo:[2,1],jorge:[1,1],kike:[1,1]}},
-  {id:"m23", fecha:"Mié 17 Jun",hora:"17:00",grp:"L",e1:"Ghana",          e2:"Panamá",         fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[2,1],jorge:[1,0],kike:[2,1]}},
-  {id:"m24", fecha:"Mié 17 Jun",hora:"20:00",grp:"K",e1:"Uzbekistán",     e2:"Colombia",       fase:"grupos",    p:{javier:[0,2],omar:[0,1],lalo:[0,2],jorge:[0,4],kike:[0,2]}},
-  {id:"m25", fecha:"Jue 18 Jun",hora:"10:00",grp:"A",e1:"Rep. Checa",     e2:"Sudáfrica",      fase:"grupos",    p:{javier:[1,0],omar:[1,0],lalo:[1,0],jorge:[2,1],kike:[1,0]}},
-  {id:"m26", fecha:"Jue 18 Jun",hora:"13:00",grp:"B",e1:"Suiza",          e2:"Bosnia y Herz.", fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[2,1]}},
-  {id:"m27", fecha:"Jue 18 Jun",hora:"16:00",grp:"B",e1:"Canadá",         e2:"Qatar",          fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[2,0],jorge:[2,1],kike:[2,1]}},
-  {id:"m28", fecha:"Jue 18 Jun",hora:"19:00",grp:"A",e1:"México",         e2:"Corea del Sur",  fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[2,1],jorge:[2,1],kike:[1,1]}},
-  {id:"m29", fecha:"Vie 19 Jun",hora:"13:00",grp:"D",e1:"Estados Unidos", e2:"Australia",      fase:"grupos",    p:{javier:[3,0],omar:[2,1],lalo:[2,1],jorge:[2,0],kike:[2,0]}},
-  {id:"m30", fecha:"Vie 19 Jun",hora:"16:00",grp:"C",e1:"Escocia",        e2:"Marruecos",      fase:"grupos",    p:{javier:[1,1],omar:[1,2],lalo:[1,1],jorge:[1,2],kike:[0,2]}},
-  {id:"m31", fecha:"Vie 19 Jun",hora:"18:30",grp:"C",e1:"Brasil",         e2:"Haití",          fase:"grupos",    p:{javier:[4,0],omar:[4,0],lalo:[4,0],jorge:[4,1],kike:[4,0]}},
-  {id:"m32", fecha:"Vie 19 Jun",hora:"21:00",grp:"D",e1:"Turquía",        e2:"Paraguay",       fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[2,1],jorge:[2,2],kike:[2,1]}},
-  {id:"m33", fecha:"Sáb 20 Jun",hora:"11:00",grp:"F",e1:"Países Bajos",   e2:"Suecia",         fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[3,1],kike:[2,2]}},
-  {id:"m34", fecha:"Sáb 20 Jun",hora:"14:00",grp:"E",e1:"Alemania",       e2:"Costa de Marfil",fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[3,1],jorge:[4,1],kike:[2,0]}},
-  {id:"m35", fecha:"Sáb 20 Jun",hora:"18:00",grp:"E",e1:"Ecuador",        e2:"Curazao",        fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
-  {id:"m36", fecha:"Sáb 20 Jun",hora:"22:00",grp:"F",e1:"Túnez",          e2:"Japón",          fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[0,2]}},
-  {id:"m37", fecha:"Dom 21 Jun",hora:"10:00",grp:"H",e1:"España",         e2:"Arabia Saudí",   fase:"grupos",    p:{javier:[3,0],omar:[3,1],lalo:[3,0],jorge:[4,0],kike:[3,1]}},
-  {id:"m38", fecha:"Dom 21 Jun",hora:"13:00",grp:"G",e1:"Bélgica",        e2:"Irán",           fase:"grupos",    p:{javier:[2,0],omar:[3,0],lalo:[2,0],jorge:[3,1],kike:[2,1]}},
-  {id:"m39", fecha:"Dom 21 Jun",hora:"16:00",grp:"H",e1:"Uruguay",        e2:"Cabo Verde",     fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,1],jorge:[3,1],kike:[2,0]}},
-  {id:"m40", fecha:"Dom 21 Jun",hora:"19:00",grp:"G",e1:"Nueva Zelanda",  e2:"Egipto",         fase:"grupos",    p:{javier:[0,1],omar:[0,2],lalo:[0,2],jorge:[1,2],kike:[0,1]}},
-  {id:"m41", fecha:"Lun 22 Jun",hora:"11:00",grp:"J",e1:"Argentina",      e2:"Austria",        fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[2,0],kike:[2,1]}},
-  {id:"m42", fecha:"Lun 22 Jun",hora:"15:00",grp:"I",e1:"Francia",        e2:"Irak",           fase:"grupos",    p:{javier:[3,0],omar:[5,0],lalo:[3,1],jorge:[3,0],kike:[3,0]}},
-  {id:"m43", fecha:"Lun 22 Jun",hora:"18:00",grp:"I",e1:"Noruega",        e2:"Senegal",        fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[1,1],jorge:[2,2],kike:[2,2]}},
-  {id:"m44", fecha:"Lun 22 Jun",hora:"21:00",grp:"J",e1:"Jordania",       e2:"Argelia",        fase:"grupos",    p:{javier:[0,1],omar:[0,1],lalo:[0,2],jorge:[1,1],kike:[0,0]}},
-  {id:"m45", fecha:"Mar 23 Jun",hora:"11:00",grp:"K",e1:"Portugal",       e2:"Uzbekistán",     fase:"grupos",    p:{javier:[3,0],omar:[3,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
-  {id:"m46", fecha:"Mar 23 Jun",hora:"14:00",grp:"L",e1:"Inglaterra",     e2:"Ghana",          fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[2,0],kike:[2,0]}},
-  {id:"m47", fecha:"Mar 23 Jun",hora:"17:00",grp:"L",e1:"Panamá",         e2:"Croacia",        fase:"grupos",    p:{javier:[0,2],omar:[1,1],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
-  {id:"m48", fecha:"Mar 23 Jun",hora:"20:00",grp:"K",e1:"Colombia",       e2:"RD Congo",       fase:"grupos",    p:{javier:[2,0],omar:[3,1],lalo:[2,0],jorge:[3,0],kike:[2,1]}},
-  {id:"m49", fecha:"Mié 24 Jun",hora:"13:00",grp:"B",e1:"Suiza",          e2:"Canadá",         fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[1,1],jorge:[3,1],kike:[1,1]}},
-  {id:"m50", fecha:"Mié 24 Jun",hora:"13:00",grp:"B",e1:"Bosnia y Herz.", e2:"Qatar",          fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,1],jorge:[2,1],kike:[2,1]}},
-  {id:"m51", fecha:"Mié 24 Jun",hora:"16:00",grp:"C",e1:"Escocia",        e2:"Brasil",         fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,2],jorge:[1,3],kike:[1,3]}},
-  {id:"m52", fecha:"Mié 24 Jun",hora:"16:00",grp:"C",e1:"Marruecos",      e2:"Haití",          fase:"grupos",    p:{javier:[2,0],omar:[3,0],lalo:[3,0],jorge:[2,0],kike:[2,0]}},
-  {id:"m53", fecha:"Mié 24 Jun",hora:"19:00",grp:"A",e1:"Rep. Checa",     e2:"México",         fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,1],jorge:[0,1],kike:[1,2]}},
-  {id:"m54", fecha:"Mié 24 Jun",hora:"19:00",grp:"A",e1:"Sudáfrica",      e2:"Corea del Sur",  fase:"grupos",    p:{javier:[0,1],omar:[1,2],lalo:[1,2],jorge:[0,1],kike:[0,2]}},
-  {id:"m55", fecha:"Jue 25 Jun",hora:"14:00",grp:"E",e1:"Curazao",        e2:"Costa de Marfil",fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,3],jorge:[0,1],kike:[1,2]}},
-  {id:"m56", fecha:"Jue 25 Jun",hora:"14:00",grp:"E",e1:"Ecuador",        e2:"Alemania",       fase:"grupos",    p:{javier:[1,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[1,2]}},
-  {id:"m57", fecha:"Jue 25 Jun",hora:"17:00",grp:"F",e1:"Japón",          e2:"Suecia",         fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[1,1],jorge:[2,1],kike:[0,0]}},
-  {id:"m58", fecha:"Jue 25 Jun",hora:"17:00",grp:"F",e1:"Túnez",          e2:"Países Bajos",   fase:"grupos",    p:{javier:[0,2],omar:[0,3],lalo:[0,2],jorge:[0,3],kike:[0,2]}},
-  {id:"m59", fecha:"Jue 25 Jun",hora:"20:00",grp:"D",e1:"Turquía",        e2:"Estados Unidos", fase:"grupos",    p:{javier:[1,2],omar:[2,2],lalo:[2,2],jorge:[2,1],kike:[2,1]}},
-  {id:"m60", fecha:"Jue 25 Jun",hora:"20:00",grp:"D",e1:"Paraguay",       e2:"Australia",      fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[2,1],jorge:[3,1],kike:[2,0]}},
-  {id:"m61", fecha:"Vie 26 Jun",hora:"13:00",grp:"I",e1:"Noruega",        e2:"Francia",        fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,2],jorge:[1,3],kike:[1,1]}},
-  {id:"m62", fecha:"Vie 26 Jun",hora:"13:00",grp:"I",e1:"Senegal",        e2:"Irak",           fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,0],jorge:[3,1],kike:[2,0]}},
-  {id:"m63", fecha:"Vie 26 Jun",hora:"18:00",grp:"H",e1:"Cabo Verde",     e2:"Arabia Saudí",   fase:"grupos",    p:{javier:[1,1],omar:[0,2],lalo:[1,1],jorge:[1,2],kike:[1,1]}},
-  {id:"m64", fecha:"Vie 26 Jun",hora:"18:00",grp:"H",e1:"Uruguay",        e2:"España",         fase:"grupos",    p:{javier:[0,2],omar:[1,3],lalo:[1,2],jorge:[2,2],kike:[2,2]}},
-  {id:"m65", fecha:"Vie 26 Jun",hora:"21:00",grp:"G",e1:"Egipto",         e2:"Irán",           fase:"grupos",    p:{javier:[1,1],omar:[1,0],lalo:[1,1],jorge:[1,0],kike:[2,1]}},
-  {id:"m66", fecha:"Vie 26 Jun",hora:"21:00",grp:"G",e1:"Nueva Zelanda",  e2:"Bélgica",        fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
-  {id:"m67", fecha:"Sáb 27 Jun",hora:"15:00",grp:"L",e1:"Panamá",         e2:"Inglaterra",     fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,3],jorge:[1,4],kike:[1,3]}},
-  {id:"m68", fecha:"Sáb 27 Jun",hora:"15:00",grp:"L",e1:"Croacia",        e2:"Ghana",          fase:"grupos",    p:{javier:[2,1],omar:[1,0],lalo:[2,1],jorge:[3,1],kike:[2,1]}},
-  {id:"m69", fecha:"Sáb 27 Jun",hora:"17:30",grp:"K",e1:"Colombia",       e2:"Portugal",       fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,1],jorge:[1,1],kike:[1,1]}},
-  {id:"m70", fecha:"Sáb 27 Jun",hora:"17:30",grp:"K",e1:"RD Congo",       e2:"Uzbekistán",     fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[2,1],jorge:[0,1],kike:[1,0]}},
-  {id:"m71", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Argelia",        e2:"Austria",        fase:"grupos",    p:{javier:[0,2],omar:[1,1],lalo:[1,1],jorge:[3,2],kike:[0,1]}},
-  {id:"m72", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Jordania",       e2:"Argentina",      fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,3],jorge:[0,5],kike:[0,3]}},
-  // Eliminatorias
-  {id:"m73", fecha:"Dom 28 Jun",hora:"",grp:"P73", e1:"Sudáfrica",         e2:"Canadá",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m74", fecha:"Lun 29 Jun",hora:"",grp:"P74", e1:"Alemania",         e2:"Paraguay",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m75", fecha:"Lun 29 Jun",hora:"",grp:"P75", e1:"Países Bajos",         e2:"Marruecos",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m76", fecha:"Mar 30 Jun",hora:"",grp:"P76", e1:"Brasil",         e2:"Japón",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m77", fecha:"Mar 30 Jun",hora:"",grp:"P77", e1:"Francia",         e2:"Suecia",     fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m78", fecha:"Mar 30 Jun",hora:"",grp:"P78", e1:"Costa de Marfil",         e2:"Noruega",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m79", fecha:"Mar 30 Jun",hora:"",grp:"P79", e1:"México",         e2:"Ecuador",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m80", fecha:"Mié 1 Jul", hora:"",grp:"P80", e1:"Inglaterra",         e2:"RD Congo",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m81", fecha:"Mié 1 Jul", hora:"",grp:"P81", e1:"Estados Unidos",         e2:"Bosnia y Herz.",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m82", fecha:"Mié 1 Jul", hora:"",grp:"P82", e1:"Bélgica",         e2:"Senegal",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m83", fecha:"Jue 2 Jul", hora:"",grp:"P83", e1:"Colombia",         e2:"Ghana",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m84", fecha:"Jue 2 Jul", hora:"",grp:"P84", e1:"España",         e2:"Austria",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m85", fecha:"Jue 2 Jul", hora:"",grp:"P85", e1:"Portugal",         e2:"Croacia",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m86", fecha:"Vie 3 Jul", hora:"",grp:"P86", e1:"Suiza",         e2:"Argelia",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m87", fecha:"Vie 3 Jul", hora:"",grp:"P87", e1:"Australia",         e2:"Egipto",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m88", fecha:"Vie 3 Jul", hora:"",grp:"P88", e1:"Argentina",         e2:"Cabo Verde",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  // GRUPOS
+  {id:"m1",  fecha:"Jue 11 Jun",hora:"13:00",grp:"A",e1:"México",          e2:"Sudáfrica",      fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,1],jorge:[3,0],kike:[null,null]}},
+  {id:"m2",  fecha:"Jue 11 Jun",hora:"20:00",grp:"A",e1:"Corea del Sur",   e2:"Rep. Checa",     fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[1,1],jorge:[1,0],kike:[null,null]}},
+  {id:"m3",  fecha:"Vie 12 Jun",hora:"13:00",grp:"B",e1:"Canadá",          e2:"Bosnia y Herz.", fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[3,1],jorge:[1,1],kike:[null,null]}},
+  {id:"m4",  fecha:"Vie 12 Jun",hora:"19:00",grp:"D",e1:"Estados Unidos",  e2:"Paraguay",       fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,0],jorge:[2,1],kike:[2,1]}},
+  {id:"m5",  fecha:"Sáb 13 Jun",hora:"13:00",grp:"B",e1:"Qatar",           e2:"Suiza",          fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
+  {id:"m6",  fecha:"Sáb 13 Jun",hora:"16:00",grp:"C",e1:"Brasil",          e2:"Marruecos",      fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,2],jorge:[1,1],kike:[2,1]}},
+  {id:"m7",  fecha:"Sáb 13 Jun",hora:"19:00",grp:"C",e1:"Haití",           e2:"Escocia",        fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,2],jorge:[0,3],kike:[0,2]}},
+  {id:"m8",  fecha:"Sáb 13 Jun",hora:"22:00",grp:"D",e1:"Australia",       e2:"Turquía",        fase:"grupos",    p:{javier:[1,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[0,1]}},
+  {id:"m9",  fecha:"Dom 14 Jun",hora:"11:00",grp:"E",e1:"Alemania",        e2:"Curazao",        fase:"grupos",    p:{javier:[4,0],omar:[5,0],lalo:[4,0],jorge:[6,0],kike:[3,0]}},
+  {id:"m10", fecha:"Dom 14 Jun",hora:"14:00",grp:"F",e1:"Países Bajos",    e2:"Japón",          fase:"grupos",    p:{javier:[2,1],omar:[1,0],lalo:[1,2],jorge:[2,0],kike:[2,1]}},
+  {id:"m11", fecha:"Dom 14 Jun",hora:"17:00",grp:"E",e1:"Costa de Marfil", e2:"Ecuador",        fase:"grupos",    p:{javier:[1,1],omar:[0,1],lalo:[1,1],jorge:[1,2],kike:[1,1]}},
+  {id:"m12", fecha:"Dom 14 Jun",hora:"20:00",grp:"F",e1:"Suecia",          e2:"Túnez",          fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[1,0]}},
+  {id:"m13", fecha:"Lun 15 Jun",hora:"10:00",grp:"H",e1:"España",          e2:"Cabo Verde",     fase:"grupos",    p:{javier:[3,0],omar:[4,0],lalo:[3,0],jorge:[5,0],kike:[3,0]}},
+  {id:"m14", fecha:"Lun 15 Jun",hora:"13:00",grp:"G",e1:"Bélgica",         e2:"Egipto",         fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[0,1],kike:[2,1]}},
+  {id:"m15", fecha:"Lun 15 Jun",hora:"16:00",grp:"H",e1:"Arabia Saudí",    e2:"Uruguay",        fase:"grupos",    p:{javier:[0,2],omar:[1,2],lalo:[0,2],jorge:[1,2],kike:[0,2]}},
+  {id:"m16", fecha:"Lun 15 Jun",hora:"19:00",grp:"G",e1:"Irán",            e2:"Nueva Zelanda",  fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,0],jorge:[2,1],kike:[1,0]}},
+  {id:"m17", fecha:"Mar 16 Jun",hora:"13:00",grp:"I",e1:"Francia",         e2:"Senegal",        fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[3,1],jorge:[3,2],kike:[3,1]}},
+  {id:"m18", fecha:"Mar 16 Jun",hora:"16:00",grp:"I",e1:"Irak",            e2:"Noruega",        fase:"grupos",    p:{javier:[0,2],omar:[0,3],lalo:[0,2],jorge:[1,3],kike:[0,2]}},
+  {id:"m19", fecha:"Mar 16 Jun",hora:"19:00",grp:"J",e1:"Argentina",       e2:"Argelia",        fase:"grupos",    p:{javier:[3,0],omar:[2,1],lalo:[3,1],jorge:[2,1],kike:[2,1]}},
+  {id:"m20", fecha:"Mar 16 Jun",hora:"22:00",grp:"J",e1:"Austria",         e2:"Jordania",       fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[1,0]}},
+  {id:"m21", fecha:"Mié 17 Jun",hora:"11:00",grp:"K",e1:"Portugal",        e2:"RD Congo",       fase:"grupos",    p:{javier:[3,0],omar:[4,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
+  {id:"m22", fecha:"Mié 17 Jun",hora:"14:00",grp:"L",e1:"Inglaterra",      e2:"Croacia",        fase:"grupos",    p:{javier:[2,1],omar:[2,0],lalo:[2,1],jorge:[1,1],kike:[1,1]}},
+  {id:"m23", fecha:"Mié 17 Jun",hora:"17:00",grp:"L",e1:"Ghana",           e2:"Panamá",         fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[2,1],jorge:[1,0],kike:[2,1]}},
+  {id:"m24", fecha:"Mié 17 Jun",hora:"20:00",grp:"K",e1:"Uzbekistán",      e2:"Colombia",       fase:"grupos",    p:{javier:[0,2],omar:[0,1],lalo:[0,2],jorge:[0,4],kike:[0,2]}},
+  {id:"m25", fecha:"Jue 18 Jun",hora:"10:00",grp:"A",e1:"Rep. Checa",      e2:"Sudáfrica",      fase:"grupos",    p:{javier:[1,0],omar:[1,0],lalo:[1,0],jorge:[2,1],kike:[1,0]}},
+  {id:"m26", fecha:"Jue 18 Jun",hora:"13:00",grp:"B",e1:"Suiza",           e2:"Bosnia y Herz.", fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[1,0],kike:[2,1]}},
+  {id:"m27", fecha:"Jue 18 Jun",hora:"16:00",grp:"B",e1:"Canadá",          e2:"Qatar",          fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[2,0],jorge:[2,1],kike:[2,1]}},
+  {id:"m28", fecha:"Jue 18 Jun",hora:"19:00",grp:"A",e1:"México",          e2:"Corea del Sur",  fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[2,1],jorge:[2,1],kike:[1,1]}},
+  {id:"m29", fecha:"Vie 19 Jun",hora:"13:00",grp:"D",e1:"Estados Unidos",  e2:"Australia",      fase:"grupos",    p:{javier:[3,0],omar:[2,1],lalo:[2,1],jorge:[2,0],kike:[2,0]}},
+  {id:"m30", fecha:"Vie 19 Jun",hora:"16:00",grp:"C",e1:"Escocia",         e2:"Marruecos",      fase:"grupos",    p:{javier:[1,1],omar:[1,2],lalo:[1,1],jorge:[1,2],kike:[0,2]}},
+  {id:"m31", fecha:"Vie 19 Jun",hora:"18:30",grp:"C",e1:"Brasil",          e2:"Haití",          fase:"grupos",    p:{javier:[4,0],omar:[4,0],lalo:[4,0],jorge:[4,1],kike:[4,0]}},
+  {id:"m32", fecha:"Vie 19 Jun",hora:"21:00",grp:"D",e1:"Turquía",         e2:"Paraguay",       fase:"grupos",    p:{javier:[2,1],omar:[2,1],lalo:[2,1],jorge:[2,2],kike:[2,1]}},
+  {id:"m33", fecha:"Sáb 20 Jun",hora:"11:00",grp:"F",e1:"Países Bajos",    e2:"Suecia",         fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[3,1],kike:[2,2]}},
+  {id:"m34", fecha:"Sáb 20 Jun",hora:"14:00",grp:"E",e1:"Alemania",        e2:"Costa de Marfil",fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[3,1],jorge:[4,1],kike:[2,0]}},
+  {id:"m35", fecha:"Sáb 20 Jun",hora:"18:00",grp:"E",e1:"Ecuador",         e2:"Curazao",        fase:"grupos",    p:{javier:[3,0],omar:[2,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
+  {id:"m36", fecha:"Sáb 20 Jun",hora:"22:00",grp:"F",e1:"Túnez",           e2:"Japón",          fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[0,2]}},
+  {id:"m37", fecha:"Dom 21 Jun",hora:"10:00",grp:"H",e1:"España",          e2:"Arabia Saudí",   fase:"grupos",    p:{javier:[3,0],omar:[3,1],lalo:[3,0],jorge:[4,0],kike:[3,1]}},
+  {id:"m38", fecha:"Dom 21 Jun",hora:"13:00",grp:"G",e1:"Bélgica",         e2:"Irán",           fase:"grupos",    p:{javier:[2,0],omar:[3,0],lalo:[2,0],jorge:[3,1],kike:[2,1]}},
+  {id:"m39", fecha:"Dom 21 Jun",hora:"16:00",grp:"H",e1:"Uruguay",         e2:"Cabo Verde",     fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,1],jorge:[3,1],kike:[2,0]}},
+  {id:"m40", fecha:"Dom 21 Jun",hora:"19:00",grp:"G",e1:"Nueva Zelanda",   e2:"Egipto",         fase:"grupos",    p:{javier:[0,1],omar:[0,2],lalo:[0,2],jorge:[1,2],kike:[0,1]}},
+  {id:"m41", fecha:"Lun 22 Jun",hora:"11:00",grp:"J",e1:"Argentina",       e2:"Austria",        fase:"grupos",    p:{javier:[2,0],omar:[2,0],lalo:[2,0],jorge:[2,0],kike:[2,1]}},
+  {id:"m42", fecha:"Lun 22 Jun",hora:"15:00",grp:"I",e1:"Francia",         e2:"Irak",           fase:"grupos",    p:{javier:[3,0],omar:[5,0],lalo:[3,1],jorge:[3,0],kike:[3,0]}},
+  {id:"m43", fecha:"Lun 22 Jun",hora:"18:00",grp:"I",e1:"Noruega",         e2:"Senegal",        fase:"grupos",    p:{javier:[2,1],omar:[3,1],lalo:[1,1],jorge:[2,2],kike:[2,2]}},
+  {id:"m44", fecha:"Lun 22 Jun",hora:"21:00",grp:"J",e1:"Jordania",        e2:"Argelia",        fase:"grupos",    p:{javier:[0,1],omar:[0,1],lalo:[0,2],jorge:[1,1],kike:[0,0]}},
+  {id:"m45", fecha:"Mar 23 Jun",hora:"11:00",grp:"K",e1:"Portugal",        e2:"Uzbekistán",     fase:"grupos",    p:{javier:[3,0],omar:[3,0],lalo:[3,0],jorge:[3,0],kike:[2,0]}},
+  {id:"m46", fecha:"Mar 23 Jun",hora:"14:00",grp:"L",e1:"Inglaterra",      e2:"Ghana",          fase:"grupos",    p:{javier:[2,0],omar:[2,1],lalo:[2,1],jorge:[2,0],kike:[2,0]}},
+  {id:"m47", fecha:"Mar 23 Jun",hora:"17:00",grp:"L",e1:"Panamá",          e2:"Croacia",        fase:"grupos",    p:{javier:[0,2],omar:[1,1],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
+  {id:"m48", fecha:"Mar 23 Jun",hora:"20:00",grp:"K",e1:"Colombia",        e2:"RD Congo",       fase:"grupos",    p:{javier:[2,0],omar:[3,1],lalo:[2,0],jorge:[3,0],kike:[2,1]}},
+  {id:"m49", fecha:"Mié 24 Jun",hora:"13:00",grp:"B",e1:"Suiza",           e2:"Canadá",         fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[1,1],jorge:[3,1],kike:[1,1]}},
+  {id:"m50", fecha:"Mié 24 Jun",hora:"13:00",grp:"B",e1:"Bosnia y Herz.",  e2:"Qatar",          fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,1],jorge:[2,1],kike:[2,1]}},
+  {id:"m51", fecha:"Mié 24 Jun",hora:"16:00",grp:"C",e1:"Escocia",         e2:"Brasil",         fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,2],jorge:[1,3],kike:[1,3]}},
+  {id:"m52", fecha:"Mié 24 Jun",hora:"16:00",grp:"C",e1:"Marruecos",       e2:"Haití",          fase:"grupos",    p:{javier:[2,0],omar:[3,0],lalo:[3,0],jorge:[2,0],kike:[2,0]}},
+  {id:"m53", fecha:"Mié 24 Jun",hora:"19:00",grp:"A",e1:"Rep. Checa",      e2:"México",         fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,1],jorge:[0,1],kike:[1,2]}},
+  {id:"m54", fecha:"Mié 24 Jun",hora:"19:00",grp:"A",e1:"Sudáfrica",       e2:"Corea del Sur",  fase:"grupos",    p:{javier:[0,1],omar:[1,2],lalo:[1,2],jorge:[0,1],kike:[0,2]}},
+  {id:"m55", fecha:"Jue 25 Jun",hora:"14:00",grp:"E",e1:"Curazao",         e2:"Costa de Marfil",fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,3],jorge:[0,1],kike:[1,2]}},
+  {id:"m56", fecha:"Jue 25 Jun",hora:"14:00",grp:"E",e1:"Ecuador",         e2:"Alemania",       fase:"grupos",    p:{javier:[1,2],omar:[0,2],lalo:[1,2],jorge:[1,2],kike:[1,2]}},
+  {id:"m57", fecha:"Jue 25 Jun",hora:"17:00",grp:"F",e1:"Japón",           e2:"Suecia",         fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[1,1],jorge:[2,1],kike:[0,0]}},
+  {id:"m58", fecha:"Jue 25 Jun",hora:"17:00",grp:"F",e1:"Túnez",           e2:"Países Bajos",   fase:"grupos",    p:{javier:[0,2],omar:[0,3],lalo:[0,2],jorge:[0,3],kike:[0,2]}},
+  {id:"m59", fecha:"Jue 25 Jun",hora:"20:00",grp:"D",e1:"Turquía",         e2:"Estados Unidos", fase:"grupos",    p:{javier:[1,2],omar:[2,2],lalo:[2,2],jorge:[2,1],kike:[2,1]}},
+  {id:"m60", fecha:"Jue 25 Jun",hora:"20:00",grp:"D",e1:"Paraguay",        e2:"Australia",      fase:"grupos",    p:{javier:[1,1],omar:[2,1],lalo:[2,1],jorge:[3,1],kike:[2,0]}},
+  {id:"m61", fecha:"Vie 26 Jun",hora:"13:00",grp:"I",e1:"Noruega",         e2:"Francia",        fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,2],jorge:[1,3],kike:[1,1]}},
+  {id:"m62", fecha:"Vie 26 Jun",hora:"13:00",grp:"I",e1:"Senegal",         e2:"Irak",           fase:"grupos",    p:{javier:[2,0],omar:[1,0],lalo:[2,0],jorge:[3,1],kike:[2,0]}},
+  {id:"m63", fecha:"Vie 26 Jun",hora:"18:00",grp:"H",e1:"Cabo Verde",      e2:"Arabia Saudí",   fase:"grupos",    p:{javier:[1,1],omar:[0,2],lalo:[1,1],jorge:[1,2],kike:[1,1]}},
+  {id:"m64", fecha:"Vie 26 Jun",hora:"18:00",grp:"H",e1:"Uruguay",         e2:"España",         fase:"grupos",    p:{javier:[0,2],omar:[1,3],lalo:[1,2],jorge:[2,2],kike:[2,2]}},
+  {id:"m65", fecha:"Vie 26 Jun",hora:"21:00",grp:"G",e1:"Egipto",          e2:"Irán",           fase:"grupos",    p:{javier:[1,1],omar:[1,0],lalo:[1,1],jorge:[1,0],kike:[2,1]}},
+  {id:"m66", fecha:"Vie 26 Jun",hora:"21:00",grp:"G",e1:"Nueva Zelanda",   e2:"Bélgica",        fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,2],jorge:[0,2],kike:[0,2]}},
+  {id:"m67", fecha:"Sáb 27 Jun",hora:"15:00",grp:"L",e1:"Panamá",          e2:"Inglaterra",     fase:"grupos",    p:{javier:[0,2],omar:[0,2],lalo:[0,3],jorge:[1,4],kike:[1,3]}},
+  {id:"m68", fecha:"Sáb 27 Jun",hora:"15:00",grp:"L",e1:"Croacia",         e2:"Ghana",          fase:"grupos",    p:{javier:[2,1],omar:[1,0],lalo:[2,1],jorge:[3,1],kike:[2,1]}},
+  {id:"m69", fecha:"Sáb 27 Jun",hora:"17:30",grp:"K",e1:"Colombia",        e2:"Portugal",       fase:"grupos",    p:{javier:[1,2],omar:[1,2],lalo:[1,1],jorge:[1,1],kike:[1,1]}},
+  {id:"m70", fecha:"Sáb 27 Jun",hora:"17:30",grp:"K",e1:"RD Congo",        e2:"Uzbekistán",     fase:"grupos",    p:{javier:[1,1],omar:[1,1],lalo:[2,1],jorge:[0,1],kike:[1,0]}},
+  {id:"m71", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Argelia",         e2:"Austria",        fase:"grupos",    p:{javier:[0,2],omar:[1,1],lalo:[1,1],jorge:[3,2],kike:[0,1]}},
+  {id:"m72", fecha:"Sáb 27 Jun",hora:"20:00",grp:"J",e1:"Jordania",        e2:"Argentina",      fase:"grupos",    p:{javier:[0,3],omar:[0,2],lalo:[0,3],jorge:[0,5],kike:[0,3]}},
+  // ── 16AVOS ── orden cronológico real (fechas verificadas contra FIFA.com)
+  {id:"m73", fecha:"Dom 28 Jun",hora:"13:00",grp:"P73",e1:"Sudáfrica",      e2:"Canadá",         fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m74", fecha:"Lun 29 Jun",hora:"14:30",grp:"P74",e1:"Alemania",       e2:"Paraguay",       fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m76", fecha:"Lun 29 Jun",hora:"11:00",grp:"P76",e1:"Brasil",         e2:"Japón",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m77", fecha:"Mar 30 Jun",hora:"15:00",grp:"P77",e1:"Francia",        e2:"Suecia",         fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m75", fecha:"Mar 30 Jun",hora:"01:00",grp:"P75",e1:"Países Bajos",   e2:"Marruecos",      fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m78", fecha:"Mar 30 Jun",hora:"11:00",grp:"P78",e1:"Costa de Marfil",e2:"Noruega",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m79", fecha:"Mié 1 Jul", hora:"01:00",grp:"P79",e1:"México",         e2:"Ecuador",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m80", fecha:"Mié 1 Jul", hora:"16:00",grp:"P80",e1:"Inglaterra",     e2:"RD Congo",       fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m82", fecha:"Mié 1 Jul", hora:"20:00",grp:"P82",e1:"Bélgica",        e2:"Senegal",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m81", fecha:"Jue 2 Jul", hora:"00:00",grp:"P81",e1:"Estados Unidos", e2:"Bosnia y Herz.", fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m83", fecha:"Jue 2 Jul", hora:"13:00",grp:"P83",e1:"Colombia",       e2:"Ghana",          fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m84", fecha:"Jue 2 Jul", hora:"17:00",grp:"P84",e1:"España",         e2:"Austria",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m85", fecha:"Jue 2 Jul", hora:"11:00",grp:"P85",e1:"Portugal",       e2:"Croacia",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m86", fecha:"Vie 3 Jul", hora:"12:00",grp:"P86",e1:"Suiza",          e2:"Argelia",        fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m87", fecha:"Vie 3 Jul", hora:"16:00",grp:"P87",e1:"Australia",      e2:"Egipto",         fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m88", fecha:"Vie 3 Jul", hora:"19:30",grp:"P88",e1:"Argentina",      e2:"Cabo Verde",     fase:"dieciseis",p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  // OCTAVOS
   {id:"m89", fecha:"Sáb 4 Jul", hora:"",grp:"P89", e1:"G.P74",       e2:"G.P77",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m90", fecha:"Sáb 4 Jul", hora:"",grp:"P90", e1:"G.P73",       e2:"G.P75",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m90", fecha:"Sáb 4 Jul", hora:"",grp:"P90", e1:"Canadá",      e2:"G.P75",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m91", fecha:"Dom 5 Jul", hora:"",grp:"P91", e1:"G.P76",       e2:"G.P78",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m92", fecha:"Dom 5 Jul", hora:"",grp:"P92", e1:"G.P79",       e2:"G.P80",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m93", fecha:"Lun 6 Jul", hora:"",grp:"P93", e1:"G.P81",       e2:"G.P83",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
-  {id:"m94", fecha:"Lun 6 Jul", hora:"",grp:"P94", e1:"G.P82",       e2:"G.P84",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m93", fecha:"Lun 6 Jul", hora:"",grp:"P93", e1:"G.P83",       e2:"G.P84",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  {id:"m94", fecha:"Lun 6 Jul", hora:"",grp:"P94", e1:"G.P81",       e2:"G.P82",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m95", fecha:"Mar 7 Jul", hora:"",grp:"P95", e1:"G.P85",       e2:"G.P87",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m96", fecha:"Mar 7 Jul", hora:"",grp:"P96", e1:"G.P86",       e2:"G.P88",        fase:"octavos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  // CUARTOS
   {id:"m97", fecha:"Jue 9 Jul", hora:"",grp:"P97", e1:"G.P89",       e2:"G.P90",        fase:"cuartos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m98", fecha:"Vie 10 Jul",hora:"",grp:"P98", e1:"G.P91",       e2:"G.P92",        fase:"cuartos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m99", fecha:"Sáb 11 Jul",hora:"",grp:"P99", e1:"G.P93",       e2:"G.P94",        fase:"cuartos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m100",fecha:"Sáb 11 Jul",hora:"",grp:"P100",e1:"G.P95",       e2:"G.P96",        fase:"cuartos",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  // SEMIS
   {id:"m101",fecha:"Mar 14 Jul",hora:"",grp:"SF1", e1:"G.P97",       e2:"G.P98",        fase:"semis",    p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m102",fecha:"Mié 15 Jul",hora:"",grp:"SF2", e1:"G.P99",       e2:"G.P100",       fase:"semis",    p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
+  // FINAL
   {id:"m103",fecha:"Sáb 18 Jul",hora:"",grp:"3er", e1:"Perdedor SF1",e2:"Perdedor SF2", fase:"tercero",  p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
   {id:"m104",fecha:"Dom 19 Jul",hora:"",grp:"FINAL",e1:"Finalista 1", e2:"Finalista 2",  fase:"final",    p:{javier:[null,null],omar:[null,null],lalo:[null,null],jorge:[null,null],kike:[null,null]}},
 ];
 
-// ════════════════════════════════════════════════
-// ESTADO
-// ════════════════════════════════════════════════
-let results = {};
-let isAdmin = false;
-let currentPhase = "grupos";
-// Asegurar que admin-mode empiece oculto
-document.querySelectorAll(".admin-mode").forEach(el=>el.classList.remove("visible"));
-const PHASE_LABEL = {grupos:"FASE DE GRUPOS",dieciseis:"16AVOS",octavos:"OCTAVOS",cuartos:"CUARTOS",semis:"SEMIFINALES",tercero:"TERCER LUGAR",final:"GRAN FINAL"};
-
-// Recibe actualizaciones de Firebase en tiempo real
-window.__onFirebaseUpdate = (data) => {
-  results = data;
-  render();
-  renderMatches();
+// Pronósticos de 16avos cargados desde Excel (hardcoded para m73–m88)
+// Formato: [goles_e1, goles_e2, penal_ganador_o_null]
+const ELIM_PRONOS_HARDCODED = {
+  m73: { javier:[1,3,null],  omar:[1,3,null],           lalo:[1,2,null],  jorge:[1,2,null],  kike:[0,2,null]  },
+  m74: { javier:[2,1,null],  omar:[3,0,null],           lalo:[3,1,null],  jorge:[3,1,null],  kike:[2,0,null]  },
+  m75: { javier:[1,1,"Países Bajos"], omar:[3,3,"Países Bajos"], lalo:[2,3,null],  jorge:[2,1,null],  kike:[2,1,null]  },
+  m76: { javier:[2,0,null],  omar:[2,1,null],           lalo:[3,1,null],  jorge:[2,0,null],  kike:[3,1,null]  },
+  m77: { javier:[4,0,null],  omar:[3,0,null],           lalo:[4,0,null],  jorge:[3,0,null],  kike:[3,1,null]  },
+  m78: { javier:[1,2,null],  omar:[2,2,"Costa de Marfil"], lalo:[1,3,null],  jorge:[1,1,"Noruega"], kike:[1,2,null]  },
+  m79: { javier:[2,0,null],  omar:[1,1,"México"],       lalo:[2,1,null],  jorge:[1,0,null],  kike:[2,1,null]  },
+  m80: { javier:[2,0,null],  omar:[2,0,null],           lalo:[3,1,null],  jorge:[2,0,null],  kike:[2,0,null]  },
+  m81: { javier:[2,1,null],  omar:[2,2,"Estados Unidos"],lalo:[3,2,null],  jorge:[3,1,null],  kike:[2,1,null]  },
+  m82: { javier:[1,1,"Bélgica"],omar:[2,2,"Senegal"],   lalo:[2,0,null],  jorge:[1,1,"Senegal"], kike:[2,1,null]  },
+  m83: { javier:[2,1,null],  omar:[2,1,null],           lalo:[2,0,null],  jorge:[2,1,null],  kike:[2,0,null]  },
+  m84: { javier:[2,0,null],  omar:[2,1,null],           lalo:[3,1,null],  jorge:[3,1,null],  kike:[2,1,null]  },
+  m85: { javier:[1,1,"Portugal"],omar:[3,2,null],       lalo:[1,1,"Portugal"],jorge:[1,1,"Portugal"],kike:[2,1,null]},
+  m86: { javier:[2,1,null],  omar:[2,1,null],           lalo:[1,2,null],  jorge:[1,1,"Suiza"], kike:[2,1,null]  },
+  m87: { javier:[1,2,null],  omar:[2,1,null],           lalo:[1,3,null],  jorge:[1,2,null],  kike:[1,2,null]  },
+  m88: { javier:[3,1,null],  omar:[4,0,null],           lalo:[4,1,null],  jorge:[3,0,null],  kike:[3,0,null]  },
 };
 
 // ════════════════════════════════════════════════
-// MOTOR
+// ESTADO
 // ════════════════════════════════════════════════
-function winner(g1,g2){ return g1>g2?"home":g2>g1?"away":"draw"; }
-function scoreMatch(r1,r2,p1,p2,fase,realPenal,predPenal){
-  if(r1==null||r2==null||p1==null||p2==null) return{pts:0,tipo:"pendiente"};
-  const sc=SCORING[fase]||SCORING.grupos;
-  const penalMatch = realPenal&&predPenal&&
-    realPenal.trim().toLowerCase()===predPenal.trim().toLowerCase();
-  if(r1===p1&&r2===p2){
-    // Exacto: si además hay empate con penales y acertó, suma penal bonus
-    if(r1===r2&&penalMatch) return{pts:sc.exact+(sc.penalty||0),tipo:"exacto"};
-    return{pts:sc.exact,tipo:"exacto"};
-  }
-  if(winner(r1,r2)===winner(p1,p2)){
-    if(winner(r1,r2)==="draw"&&penalMatch){
-      return{pts:sc.direction+(sc.penalty||0),tipo:"ganador_penal"};
-    }
-    return{pts:sc.direction,tipo:"ganador"};
-  }
-  return{pts:0,tipo:"fallado"};
+let results     = {};
+let kickoffs    = {};   // { matchId: "2026-06-28T13:00" }
+let isAdmin     = false;
+let currentParticipantId = null;  // null = solo lectura
+let currentPhase = "dieciseis";   // Arrancar en 16avos
+let modalMode   = "admin";        // "admin" | "participant"
+
+// ════════════════════════════════════════════════
+// FIREBASE CALLBACKS
+// ════════════════════════════════════════════════
+window.__onFirebaseUpdate = (data) => {
+  results = data;
+  renderAll();
+};
+window.__onKickoffsUpdate = (data) => {
+  kickoffs = data;
+  renderAll();
+};
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+function isMatchLocked(matchId) {
+  // Un partido está "bloqueado" (pronósticos ocultos) si:
+  // 1. Tiene kickoff configurado Y la hora actual < kickoff
+  const ko = kickoffs[matchId];
+  if (!ko) return false; // sin kickoff = no bloqueado (visible)
+  const koTime = new Date(ko).getTime();
+  return Date.now() < koTime;
 }
-function calcTotals(){
-  const T={},E={},F={};
-  PARTICIPANTS.forEach(p=>{T[p.id]=0;E[p.id]=0;F[p.id]={grupos:0,elim:0};});
-  MATCHES.forEach(m=>{
-    const r=results[m.id];
-    const r1=Array.isArray(r)?r[0]:(r&&r.score?r.score[0]:null);
-    const r2=Array.isArray(r)?r[1]:(r&&r.score?r.score[1]:null);
-    const isElim = m.fase!=="grupos";
-    const realPenal = (r&&!Array.isArray(r)&&r.penal)?r.penal:null;
-    PARTICIPANTS.forEach(p=>{
-      let p1,p2,predPenal=null;
-      if(isElim){
-        const sp=(r&&r.pronos)?r.pronos[p.id]:null;
-        p1=sp?sp[0]:null; p2=sp?sp[1]:null;
-        predPenal=sp?sp[2]:null;
+
+function getElimProno(matchId, participantId) {
+  // Primero busca en Firebase (pronósticos subidos por el participante)
+  const r = results[matchId];
+  if (r && !Array.isArray(r) && r.pronos && r.pronos[participantId]) {
+    const sp = r.pronos[participantId];
+    return { p1: sp[0], p2: sp[1], penal: sp[2] || null };
+  }
+  // Fallback: hardcoded de los Excel
+  const hc = ELIM_PRONOS_HARDCODED[matchId];
+  if (hc && hc[participantId]) {
+    const arr = hc[participantId];
+    return { p1: arr[0], p2: arr[1], penal: arr[2] || null };
+  }
+  return { p1: null, p2: null, penal: null };
+}
+
+// ════════════════════════════════════════════════
+// MOTOR DE PUNTUACIÓN
+// ════════════════════════════════════════════════
+function winner(g1, g2) { return g1 > g2 ? "home" : g2 > g1 ? "away" : "draw"; }
+
+function scoreMatch(r1, r2, p1, p2, fase, realPenal, predPenal) {
+  if (r1 == null || r2 == null || p1 == null || p2 == null) return { pts: 0, tipo: "pendiente" };
+  const sc = SCORING[fase] || SCORING.grupos;
+  const penalMatch = realPenal && predPenal &&
+    realPenal.trim().toLowerCase() === predPenal.trim().toLowerCase();
+  if (r1 === p1 && r2 === p2) {
+    if (r1 === r2 && penalMatch) return { pts: sc.exact + (sc.penalty || 0), tipo: "exacto" };
+    return { pts: sc.exact, tipo: "exacto" };
+  }
+  if (winner(r1, r2) === winner(p1, p2)) {
+    if (winner(r1, r2) === "draw" && penalMatch)
+      return { pts: sc.direction + (sc.penalty || 0), tipo: "ganador_penal" };
+    return { pts: sc.direction, tipo: "ganador" };
+  }
+  return { pts: 0, tipo: "fallado" };
+}
+
+function calcTotals() {
+  const T = {}, E = {}, F = {};
+  PARTICIPANTS.forEach(p => { T[p.id] = 0; E[p.id] = 0; F[p.id] = { grupos: 0, elim: 0 }; });
+  MATCHES.forEach(m => {
+    const r = results[m.id];
+    const r1 = Array.isArray(r) ? r[0] : (r && r.score ? r.score[0] : null);
+    const r2 = Array.isArray(r) ? r[1] : (r && r.score ? r.score[1] : null);
+    const isElim = m.fase !== "grupos";
+    const realPenal = (r && !Array.isArray(r) && r.penal) ? r.penal : null;
+    PARTICIPANTS.forEach(p => {
+      let p1, p2, predPenal = null;
+      if (isElim) {
+        const prono = getElimProno(m.id, p.id);
+        p1 = prono.p1; p2 = prono.p2; predPenal = prono.penal;
       } else {
-        const fp=m.p[p.id]||[null,null];
-        p1=fp[0]; p2=fp[1];
+        const fp = m.p[p.id] || [null, null];
+        p1 = fp[0]; p2 = fp[1];
       }
-      const{pts,tipo}=scoreMatch(r1,r2,p1,p2,m.fase,realPenal,predPenal);
-      T[p.id]+=pts; if(tipo==="exacto"||tipo==="ganador_penal")E[p.id]++;
-      if(m.fase==="grupos")F[p.id].grupos+=pts; else F[p.id].elim+=pts;
+      const { pts, tipo } = scoreMatch(r1, r2, p1, p2, m.fase, realPenal, predPenal);
+      T[p.id] += pts;
+      if (tipo === "exacto" || tipo === "ganador_penal") E[p.id]++;
+      if (m.fase === "grupos") F[p.id].grupos += pts; else F[p.id].elim += pts;
     });
   });
-  return{T,E,F};
+  return { T, E, F };
 }
-function ranked(T,E){
-  return[...PARTICIPANTS].sort((a,b)=>T[b.id]!==T[a.id]?T[b.id]-T[a.id]:E[b.id]-E[a.id]);
+
+function ranked(T, E) {
+  return [...PARTICIPANTS].sort((a, b) =>
+    T[b.id] !== T[a.id] ? T[b.id] - T[a.id] : E[b.id] - E[a.id]
+  );
 }
 
 // ════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════
-function render(){
-  const{T,E,F}=calcTotals();
-  const R=ranked(T,E);
-  renderPodium(R,T,E);
-  renderStats(R,T,E);
-  renderRanking(R,T,E,F);
+function renderAll() {
+  const { T, E, F } = calcTotals();
+  const R = ranked(T, E);
+  renderPodium(R, T, E);
+  renderStats(R, T, E);
+  renderRanking(R, T, E, F);
+  renderMatches();
+  if (isAdmin) renderKickoffPanel();
 }
 
-function renderPodium(R,T,E){
-  document.getElementById("podium").innerHTML=R.map((p,i)=>{
-    const bc=i===0?"var(--gold)":i===1?"#C0C0C0":i===2?"#B87333":"var(--border)";
-    return`<div class="p-card rank-${i+1}" style="order:${i===0?-1:i};border-color:${bc}">
+function renderPodium(R, T, E) {
+  document.getElementById("podium").innerHTML = R.map((p, i) => {
+    const bc = i === 0 ? "var(--gold)" : i === 1 ? "#C0C0C0" : i === 2 ? "#B87333" : "var(--border)";
+    return `<div class="p-card rank-${i + 1}" style="order:${i === 0 ? -1 : i};border-color:${bc}">
       <div class="p-medal">${MEDALS[i]}</div>
-      <div class="p-rank">${i+1}° LUGAR</div>
+      <div class="p-rank">${i + 1}° LUGAR</div>
       <div class="p-name">${p.name}</div>
       <div class="p-pts">${T[p.id]}</div>
       <div class="p-label">puntos</div>
-      ${i===0?`<div class="p-prize">$2,500 MXN 🏆</div>`:""}
+      ${i === 0 ? `<div class="p-prize">$2,500 MXN 🏆</div>` : ""}
     </div>`;
   }).join("");
 }
 
-function renderStats(R,T,E){
-  try{
-    let played=0;
-    MATCHES.forEach(m=>{
-      try{
-        const r=results[m.id];
-        if(!r) return;
-        if(Array.isArray(r)){ if(r[0]!=null&&r[1]!=null) played++; }
-        else if(r&&r.score){ if(r.score[0]!=null&&r.score[1]!=null) played++; }
-      }catch(e){}
+function renderStats(R, T, E) {
+  try {
+    let played = 0;
+    MATCHES.forEach(m => {
+      try {
+        const r = results[m.id];
+        if (!r) return;
+        if (Array.isArray(r)) { if (r[0] != null && r[1] != null) played++; }
+        else if (r && r.score) { if (r.score[0] != null && r.score[1] != null) played++; }
+      } catch (e) {}
     });
-    const allE=Object.values(E).reduce((a,b)=>a+b,0);
-    document.getElementById("stats").innerHTML=`
+    const allE = Object.values(E).reduce((a, b) => a + b, 0);
+    document.getElementById("stats").innerHTML = `
       <div class="stat"><div class="stat-label">Partidos Jugados</div><div class="stat-val">${played}</div><div class="stat-sub">de ${MATCHES.length} totales</div></div>
-      <div class="stat"><div class="stat-label">Líder Actual</div><div class="stat-val" style="font-size:18px;padding-top:4px">${R[0]?R[0].name.split(" ")[0]:"—"}</div><div class="stat-sub">${R[0]?T[R[0].id]+" pts":""}</div></div>
+      <div class="stat"><div class="stat-label">Líder Actual</div><div class="stat-val" style="font-size:18px;padding-top:4px">${R[0] ? R[0].name.split(" ")[0] : "—"}</div><div class="stat-sub">${R[0] ? T[R[0].id] + " pts" : ""}</div></div>
       <div class="stat"><div class="stat-label">Total Exactos</div><div class="stat-val">${allE}</div><div class="stat-sub">entre los 5 participantes</div></div>
       <div class="stat"><div class="stat-label">Pozo Total</div><div class="stat-val" style="font-size:18px;padding-top:4px;color:var(--gold)">$2,500</div><div class="stat-sub">MXN · 5 × $500</div></div>`;
-  }catch(e){ console.error("renderStats error:",e); }
+  } catch (e) { console.error("renderStats error:", e); }
 }
 
-function renderRanking(R,T,E,F){
-  document.getElementById("ranking-body").innerHTML=R.map((p,i)=>`
-    <tr style="${i===0?"background:#FFD60008":""}">
-      <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted)">${i+1}</td>
+function renderRanking(R, T, E, F) {
+  document.getElementById("ranking-body").innerHTML = R.map((p, i) => `
+    <tr style="${i === 0 ? "background:#FFD60008" : ""}">
+      <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted)">${i + 1}</td>
       <td>${MEDALS[i]}</td>
       <td style="font-weight:600">${p.name}</td>
       <td><span class="badge">${E[p.id]} exactos</span></td>
@@ -526,81 +651,136 @@ function renderRanking(R,T,E,F){
     </tr>`).join("");
 }
 
-function renderTabs(){
-  document.getElementById("tabs").innerHTML=PHASES.map(ph=>
-    `<button class="tab${ph.key===currentPhase?" active":""}" onclick="switchPhase('${ph.key}')">${ph.label}</button>`
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = PHASES.map(ph =>
+    `<button class="tab${ph.key === currentPhase ? " active" : ""}" onclick="switchPhase('${ph.key}')">${ph.label}</button>`
   ).join("");
 }
 
-function switchPhase(key){ currentPhase=key; renderTabs(); renderMatches(); }
+function switchPhase(key) { currentPhase = key; renderTabs(); renderMatches(); }
 
-function renderMatches(){
-  try{
-    const ms=MATCHES.filter(m=>m.fase===currentPhase);
-    const byDate={};
-    ms.forEach(m=>{ if(!byDate[m.fecha])byDate[m.fecha]=[]; byDate[m.fecha].push(m); });
-    const html=Object.entries(byDate).map(([fecha,arr])=>`
-      <div class="match-section">
-        <div class="day-hdr">
-          <span class="day-lbl">${fecha}</span>
-          <span class="day-phase">${PHASE_LABEL[currentPhase]||""}</span>
-        </div>
-        ${arr.map(m=>{ try{return renderCard(m);}catch(e){console.error("renderCard error",m.id,e);return "";} }).join("")}
-      </div>`).join("");
-    document.getElementById("matches").innerHTML=html||"<p style='color:var(--dim);padding:20px'>No hay partidos para esta fase</p>";
-  }catch(e){ console.error("renderMatches error:",e); }
+// ── Kickoff Panel (solo admin) ──
+function renderKickoffPanel() {
+  const elimMatches = MATCHES.filter(m => m.fase !== "grupos");
+  document.getElementById("kickoff-list").innerHTML = elimMatches.map(m => {
+    const locked = isMatchLocked(m.id);
+    const ko = kickoffs[m.id] || "";
+    return `<div class="kickoff-row">
+      <span class="kickoff-label">${m.grp} · ${m.e1} vs ${m.e2}</span>
+      <input class="kickoff-input" type="datetime-local" id="ko_${m.id}" value="${ko}"
+        title="Hora de inicio (CDMX)">
+      <span class="kickoff-status ${locked ? 'locked' : 'open'}">${locked ? '🔒 Sellado' : '🟢 Abierto'}</span>
+    </div>`;
+  }).join("");
 }
 
-function renderCard(m){
-  const r=results[m.id]||[null,null];
-  const rr=Array.isArray(r)?r:(r.score||[null,null]);
-  const v1=rr[0]!=null?rr[0]:"", v2=rr[1]!=null?rr[1]:"";
-  const sc=SCORING[m.fase]||SCORING.grupos;
-  const isElim = m.fase!=="grupos";
+async function saveKickoffs() {
+  const elimMatches = MATCHES.filter(m => m.fase !== "grupos");
+  const newKickoffs = {};
+  elimMatches.forEach(m => {
+    const inp = document.getElementById(`ko_${m.id}`);
+    if (inp && inp.value) newKickoffs[m.id] = inp.value;
+  });
+  try {
+    await window.__fbSaveKickoffs(newKickoffs);
+    showToast("⏱ Kickoffs guardados");
+  } catch (e) { alert("Error al guardar kickoffs"); }
+}
 
-  // For elim rounds, pronos come from Firebase (results[m.id].pronos)
-  // For grupos, pronos are fixed in data (m.p)
-  const storedPronos = (r&&!Array.isArray(r)&&r.pronos) ? r.pronos : {};
+// ── Render partido ──
+function renderCard(m) {
+  const r = results[m.id] || [null, null];
+  const rr = Array.isArray(r) ? r : (r.score || [null, null]);
+  const v1 = rr[0] != null ? rr[0] : "", v2 = rr[1] != null ? rr[1] : "";
+  const isElim = m.fase !== "grupos";
+  const locked = isElim && isMatchLocked(m.id);
+  const storedPronos = (r && !Array.isArray(r) && r.pronos) ? r.pronos : {};
 
-  const prons=PARTICIPANTS.map(p=>{
-    let p1,p2,predPenal=null;
-    if(isElim){
-      const sp=storedPronos[p.id];
-      p1=sp?sp[0]:null; p2=sp?sp[1]:null; predPenal=sp?sp[2]:null;
-    } else {
-      const fp=m.p[p.id]||[null,null];
-      p1=fp[0]; p2=fp[1];
-    }
-
-    // Admin elim: show input fields per participant
-    if(isElim && isAdmin){
-      const sv1=p1!=null?p1:"", sv2=p2!=null?p2:"";
-      const spv=p2!=null&&p1!=null&&p1===p2?predPenal||"":"";
-      return`<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px">
+  const prons = PARTICIPANTS.map(p => {
+    // Modo admin: siempre muestra inputs de captura
+    if (isElim && isAdmin) {
+      const prono = getElimProno(m.id, p.id);
+      const sv1 = prono.p1 != null ? prono.p1 : "";
+      const sv2 = prono.p2 != null ? prono.p2 : "";
+      const spv = (prono.p1 != null && prono.p2 != null && prono.p1 === prono.p2) ? (prono.penal || "") : "";
+      const showPenalSelect = sv1 !== "" && sv2 !== "" && sv1 == sv2;
+      return `<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px">
         <span class="pron-name" style="color:var(--text);margin-bottom:2px">${p.name.split(" ")[0]}</span>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <input class="score-inp${sv1!==''?' filled':''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
+          <input class="score-inp${sv1 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
             onchange="setProno('${m.id}','${p.id}',0,this.value)" style="width:32px;height:30px;font-size:13px">
           <span style="color:var(--muted)">–</span>
-          <input class="score-inp${sv2!==''?' filled':''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
+          <input class="score-inp${sv2 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
             onchange="setProno('${m.id}','${p.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
-          <select onchange="setProno('${m.id}','${p.id}',2,this.value)"
+          ${showPenalSelect ? `<select onchange="setProno('${m.id}','${p.id}',2,this.value)"
             style="height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
             <option value="">🏆 penales</option>
-            <option value="${m.e1}" ${spv===m.e1?"selected":""}}>${m.e1}</option>
-            <option value="${m.e2}" ${spv===m.e2?"selected":""}}>${m.e2}</option>
-          </select>
+            <option value="${m.e1}" ${spv === m.e1 ? "selected" : ""}>${m.e1}</option>
+            <option value="${m.e2}" ${spv === m.e2 ? "selected" : ""}>${m.e2}</option>
+          </select>` : ``}
         </div>
       </div>`;
     }
 
-    if(p1==null&&p2==null) return`<div class="pron pendiente"><span>⏳</span><span class="pron-name">${p.name.split(" ")[0]}</span><span class="pron-score" style="color:var(--muted)">por definir</span></div>`;
-    const realPen=(r&&!Array.isArray(r)&&r.penal)?r.penal:null;
-    const{pts,tipo}=scoreMatch(rr[0],rr[1],p1,p2,m.fase,realPen,predPenal);
-    const icon={exacto:"✅",ganador:"🔵",ganador_penal:"🟢",fallado:"❌",pendiente:"⏳"}[tipo]||"⏳";
-    const pts_lbl=tipo==="pendiente"?`+${sc.exact}/${sc.direction}`:tipo==="fallado"?"0":`+${pts}`;
-    const penalLabel=predPenal?` 🏆 ${predPenal}`:"";
-    return`<div class="pron ${tipo==="ganador_penal"?"ganador":tipo}" style="flex-direction:column;align-items:flex-start;gap:2px">
+    // Modo participante propio: muestra input si el partido no está sellado
+    if (isElim && currentParticipantId === p.id) {
+      if (locked) {
+        return `<div class="pron locked">
+          <span>🔒</span>
+          <span class="pron-name">${p.name.split(" ")[0]}</span>
+          <span class="pron-score">Sellado</span>
+        </div>`;
+      }
+      const prono = getElimProno(m.id, p.id);
+      const sv1 = prono.p1 != null ? prono.p1 : "";
+      const sv2 = prono.p2 != null ? prono.p2 : "";
+      const showPenalSelect = sv1 !== "" && sv2 !== "" && sv1 == sv2;
+      const spv = showPenalSelect ? (prono.penal || "") : "";
+      return `<div class="pron pendiente" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px;border-color:#5C9FFF44">
+        <span class="pron-name" style="color:var(--blue);margin-bottom:2px">✏️ ${p.name.split(" ")[0]}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <input class="score-inp${sv1 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv1}" placeholder="—"
+            onchange="setMyProno('${m.id}',0,this.value)" style="width:32px;height:30px;font-size:13px">
+          <span style="color:var(--muted)">–</span>
+          <input class="score-inp${sv2 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${sv2}" placeholder="—"
+            onchange="setMyProno('${m.id}',1,this.value)" style="width:32px;height:30px;font-size:13px">
+          ${showPenalSelect ? `<select onchange="setMyProno('${m.id}',2,this.value)"
+            style="height:30px;font-size:11px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
+            <option value="">🏆 penales</option>
+            <option value="${m.e1}" ${spv === m.e1 ? "selected" : ""}>${m.e1}</option>
+            <option value="${m.e2}" ${spv === m.e2 ? "selected" : ""}>${m.e2}</option>
+          </select>` : ``}
+        </div>
+      </div>`;
+    }
+
+    // Modo lectura para elim: si está bloqueado, mostrar 🔒
+    if (isElim && locked && !isAdmin) {
+      return `<div class="pron locked">
+        <span>🔒</span>
+        <span class="pron-name">${p.name.split(" ")[0]}</span>
+        <span class="pron-score" style="color:var(--gold)">Sellado</span>
+      </div>`;
+    }
+
+    // Lectura normal
+    let p1, p2, predPenal = null;
+    if (isElim) {
+      const prono = getElimProno(m.id, p.id);
+      p1 = prono.p1; p2 = prono.p2; predPenal = prono.penal;
+    } else {
+      const fp = m.p[p.id] || [null, null];
+      p1 = fp[0]; p2 = fp[1];
+    }
+
+    if (p1 == null && p2 == null) return `<div class="pron pendiente"><span>⏳</span><span class="pron-name">${p.name.split(" ")[0]}</span><span class="pron-score" style="color:var(--muted)">por definir</span></div>`;
+    const sc = SCORING[m.fase] || SCORING.grupos;
+    const realPenal = (r && !Array.isArray(r) && r.penal) ? r.penal : null;
+    const { pts, tipo } = scoreMatch(rr[0], rr[1], p1, p2, m.fase, realPenal, predPenal);
+    const icon = { exacto: "✅", ganador: "🔵", ganador_penal: "🟢", fallado: "❌", pendiente: "⏳" }[tipo] || "⏳";
+    const pts_lbl = tipo === "pendiente" ? `+${sc.exact}/${sc.direction}` : tipo === "fallado" ? "0" : `+${pts}`;
+    const penalLabel = predPenal ? ` 🏆 ${predPenal}` : "";
+    return `<div class="pron ${tipo === "ganador_penal" ? "ganador" : tipo}" style="flex-direction:column;align-items:flex-start;gap:2px">
       <div style="display:flex;align-items:center;gap:6px;width:100%">
         <span>${icon}</span>
         <span class="pron-name">${p.name.split(" ")[0]}</span>
@@ -612,36 +792,36 @@ function renderCard(m){
     </div>`;
   }).join("");
 
-  const realPenalVal=(r&&!Array.isArray(r)&&r.penal)?r.penal:"";
+  const realPenalVal = (r && !Array.isArray(r) && r.penal) ? r.penal : "";
   let scoreInputs;
-  if(isAdmin){
-    scoreInputs=`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+  if (isAdmin) {
+    scoreInputs = `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
       <div style="display:flex;align-items:center;gap:5px">
-        <input class="score-inp${v1!==''?' filled':''}" type="number" min="0" max="30" value="${v1}" placeholder="—"
+        <input class="score-inp${v1 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${v1}" placeholder="—"
           onchange="setScore('${m.id}',0,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
         <span class="score-dash">–</span>
-        <input class="score-inp${v2!==''?' filled':''}" type="number" min="0" max="30" value="${v2}" placeholder="—"
+        <input class="score-inp${v2 !== '' ? ' filled' : ''}" type="number" min="0" max="30" value="${v2}" placeholder="—"
           onchange="setScore('${m.id}',1,this.value)" oninput="this.classList.toggle('filled',this.value!=='')">
       </div>
-      ${isElim?`<select onchange="setPenal('${m.id}',this.value)"
+      ${isElim ? `<select onchange="setPenal('${m.id}',this.value)"
         style="height:26px;font-size:10px;border-radius:6px;border:1.5px solid #66BB6A;background:#E8F5E9;padding:0 4px;font-family:Inter,sans-serif;color:#1B5E20;outline:none;cursor:pointer">
         <option value="">🏆 ganador penales</option>
-        <option value="${m.e1}" ${realPenalVal===m.e1?"selected":""}>${m.e1}</option>
-        <option value="${m.e2}" ${realPenalVal===m.e2?"selected":""}>${m.e2}</option>
-      </select>`:``}
+        <option value="${m.e1}" ${realPenalVal === m.e1 ? "selected" : ""}>${m.e1}</option>
+        <option value="${m.e2}" ${realPenalVal === m.e2 ? "selected" : ""}>${m.e2}</option>
+      </select>` : ``}
     </div>`;
   } else {
-    const scoreStr=v1!==''?`${v1} – ${v2}`:"vs";
-    const penalStr=isElim&&realPenalVal?` 🏆 ${realPenalVal}`:"";
-    scoreInputs=`<div style="text-align:center">
-      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:${v1!==''?'var(--green)':'var(--muted)'}">${scoreStr}</span>
-      ${penalStr?`<div style="font-size:10px;color:#66BB6A;margin-top:2px">${penalStr}</div>`:""}
+    const scoreStr = v1 !== '' ? `${v1} – ${v2}` : "vs";
+    const penalStr = isElim && realPenalVal ? ` 🏆 ${realPenalVal}` : "";
+    scoreInputs = `<div style="text-align:center">
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:${v1 !== '' ? 'var(--green)' : 'var(--muted)'}">${scoreStr}</span>
+      ${penalStr ? `<div style="font-size:10px;color:#66BB6A;margin-top:2px">${penalStr}</div>` : ""}
     </div>`;
   }
 
-  return`<div class="match-card">
+  return `<div class="match-card">
     <div class="match-hdr">
-      <span style="font-size:11px;color:var(--dim);font-family:monospace">${m.hora||m.grp}</span>
+      <span style="font-size:11px;color:var(--dim);font-family:monospace">${m.hora || m.grp}</span>
       <span class="team r">${m.e1}</span>
       <div class="score-area">${scoreInputs}</div>
       <span class="team">${m.e2}</span>
@@ -651,84 +831,178 @@ function renderCard(m){
   </div>`;
 }
 
-// Set prono for elimination round participant
-function setProno(matchId, participantId, pos, val){
-  if(!results[matchId]||Array.isArray(results[matchId])) results[matchId]={score:[null,null],pronos:{}};
-  if(!results[matchId].pronos) results[matchId].pronos={};
-  if(!results[matchId].pronos[participantId]) results[matchId].pronos[participantId]=[null,null,null];
-  if(pos===2){
-    results[matchId].pronos[participantId][2] = val===""?null:val.trim();
-  } else {
-    results[matchId].pronos[participantId][pos] = val===""?null:parseInt(val);
-  }
-  render();
-  renderMatches();
+function renderMatches() {
+  try {
+    const ms = MATCHES.filter(m => m.fase === currentPhase);
+    const byDate = {};
+    ms.forEach(m => { if (!byDate[m.fecha]) byDate[m.fecha] = []; byDate[m.fecha].push(m); });
+    const html = Object.entries(byDate).map(([fecha, arr]) => `
+      <div class="match-section">
+        <div class="day-hdr">
+          <span class="day-lbl">${fecha}</span>
+          <span class="day-phase">${PHASE_LABEL[currentPhase] || ""}</span>
+        </div>
+        ${arr.map(m => { try { return renderCard(m); } catch (e) { console.error("renderCard error", m.id, e); return ""; } }).join("")}
+      </div>`).join("");
+    document.getElementById("matches").innerHTML = html || "<p style='color:var(--dim);padding:20px'>No hay partidos para esta fase</p>";
+  } catch (e) { console.error("renderMatches error:", e); }
 }
 
 // ════════════════════════════════════════════════
-// ADMIN
+// ACCIONES DE DATOS
 // ════════════════════════════════════════════════
-function openModal(){ document.getElementById("modal").classList.add("open"); document.getElementById("pwd-input").focus(); }
-function closeModal(){ document.getElementById("modal").classList.remove("open"); document.getElementById("modal-err").classList.remove("show"); document.getElementById("pwd-input").value=""; }
-function checkPwd(){
-  const val=document.getElementById("pwd-input").value;
-  if(val===ADMIN_PASSWORD){ isAdmin=true; closeModal(); toggleAdmin(true); }
-  else{ document.getElementById("modal-err").classList.add("show"); }
-}
-function toggleAdmin(on){
-  document.querySelectorAll(".admin-mode").forEach(el=>{
-    el.style.display = on ? (el.classList.contains("save-btn") ? "flex" : "block") : "none";
-  });
-  const lockBtn=document.getElementById("admin-lock-btn");
-  if(lockBtn) lockBtn.style.display=on?"none":"flex";
-  render();
-}
-function exitAdmin(){ isAdmin=false; toggleAdmin(false); render(); }
-
-function setScore(id,pos,val){
-  const match=MATCHES.find(x=>x.id===id);
-  const isElim=match&&match.fase!=="grupos";
-  if(isElim){
-    if(!results[id]||Array.isArray(results[id])) results[id]={score:[null,null],pronos:{},penal:null};
-    if(!results[id].score) results[id].score=[null,null];
-    results[id].score[pos]=val===""?null:parseInt(val);
-  } else {
-    if(!results[id]||!Array.isArray(results[id])) results[id]=[null,null];
-    results[id][pos]=val===""?null:parseInt(val);
-  }
-  render();
-  renderMatches();
-}
-function setPenal(id,val){
-  if(!results[id]||Array.isArray(results[id])) results[id]={score:[null,null],pronos:{},penal:null};
-  results[id].penal=val===""?null:val.trim();
-  render();
-  renderMatches();
+function setProno(matchId, participantId, pos, val) {
+  if (!results[matchId] || Array.isArray(results[matchId]))
+    results[matchId] = { score: [null, null], pronos: {} };
+  if (!results[matchId].pronos) results[matchId].pronos = {};
+  if (!results[matchId].pronos[participantId]) results[matchId].pronos[participantId] = [null, null, null];
+  if (pos === 2) results[matchId].pronos[participantId][2] = val === "" ? null : val.trim();
+  else results[matchId].pronos[participantId][pos] = val === "" ? null : parseInt(val);
+  renderMatches(); // Bug C fix: solo renderiza partidos, no scoreboard completo en cada keystroke
 }
 
-async function saveToFirebase(){
-  const btn=document.getElementById("save-btn");
-  btn.disabled=true; btn.textContent="⏳ Guardando...";
-  try{
+// Acción del participante logueado — escribe solo su pronóstico
+let myPendingPronos = {}; // buffer local hasta que presiona Guardar
+function setMyProno(matchId, pos, val) {
+  if (!myPendingPronos[matchId]) myPendingPronos[matchId] = [null, null, null];
+  if (pos === 2) myPendingPronos[matchId][2] = val === "" ? null : val.trim();
+  else myPendingPronos[matchId][pos] = val === "" ? null : parseInt(val);
+}
+
+async function saveParticipantPronos() {
+  const btn = document.getElementById("save-pronos-btn");
+  btn.disabled = true; btn.textContent = "⏳ Guardando...";
+  try {
+    // Merge myPendingPronos en results y guardar
+    for (const matchId of Object.keys(myPendingPronos)) {
+      if (!results[matchId] || Array.isArray(results[matchId]))
+        results[matchId] = { score: [null, null], pronos: {} };
+      if (!results[matchId].pronos) results[matchId].pronos = {};
+      results[matchId].pronos[currentParticipantId] = myPendingPronos[matchId];
+    }
     await window.__fbSave(results);
-    const t=document.getElementById("toast");
-    t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500);
-  }catch(e){ alert("Error al guardar en Firebase. Revisa la configuración."); }
-  btn.disabled=false; btn.innerHTML="💾 Guardar Resultados";
+    myPendingPronos = {};
+    showToast("✅ Pronósticos guardados");
+  } catch (e) { alert("Error al guardar. Intenta de nuevo."); }
+  btn.disabled = false; btn.innerHTML = "💾 Guardar Mis Pronósticos";
+}
+
+function setScore(id, pos, val) {
+  const match = MATCHES.find(x => x.id === id);
+  const isElim = match && match.fase !== "grupos";
+  if (isElim) {
+    if (!results[id] || Array.isArray(results[id])) results[id] = { score: [null, null], pronos: {}, penal: null };
+    if (!results[id].score) results[id].score = [null, null];
+    results[id].score[pos] = val === "" ? null : parseInt(val);
+  } else {
+    if (!results[id] || !Array.isArray(results[id])) results[id] = [null, null];
+    results[id][pos] = val === "" ? null : parseInt(val);
+  }
+  renderMatches();
+}
+
+function setPenal(id, val) {
+  if (!results[id] || Array.isArray(results[id])) results[id] = { score: [null, null], pronos: {}, penal: null };
+  results[id].penal = val === "" ? null : val.trim();
+  renderMatches();
+}
+
+async function saveToFirebase() {
+  const btn = document.getElementById("save-btn");
+  btn.disabled = true; btn.textContent = "⏳ Guardando...";
+  try {
+    await window.__fbSave(results);
+    showToast("✅ Guardado en tiempo real");
+  } catch (e) { alert("Error al guardar en Firebase. Revisa la configuración."); }
+  btn.disabled = false; btn.innerHTML = "💾 Guardar Resultados";
+}
+
+// ════════════════════════════════════════════════
+// MODAL / SESIÓN
+// ════════════════════════════════════════════════
+let modalCurrentTab = "admin";
+
+function switchModalTab(tab) {
+  modalCurrentTab = tab;
+  document.getElementById("tab-admin-btn").classList.toggle("active", tab === "admin");
+  document.getElementById("tab-part-btn").classList.toggle("active", tab === "participant");
+  document.getElementById("modal-admin-section").style.display = tab === "admin" ? "" : "none";
+  document.getElementById("modal-part-section").style.display = tab === "participant" ? "" : "none";
+  document.getElementById("modal-err").classList.remove("show");
+  document.getElementById("pwd-input").value = "";
+  document.getElementById("pwd-input").focus();
+}
+
+function openModal() { document.getElementById("modal").classList.add("open"); document.getElementById("pwd-input").focus(); }
+function closeModal() { document.getElementById("modal").classList.remove("open"); document.getElementById("modal-err").classList.remove("show"); document.getElementById("pwd-input").value = ""; }
+
+function checkPwd() {
+  const val = document.getElementById("pwd-input").value.trim();
+  if (modalCurrentTab === "admin") {
+    if (val === ADMIN_PASSWORD) {
+      isAdmin = true; currentParticipantId = null;
+      closeModal(); activateAdmin();
+    } else {
+      document.getElementById("modal-err").classList.add("show");
+    }
+  } else {
+    // Modo participante
+    const pid = PARTICIPANT_KEYS[val];
+    if (pid) {
+      currentParticipantId = pid; isAdmin = false;
+      closeModal(); activateParticipant(pid);
+    } else {
+      document.getElementById("modal-err").classList.add("show");
+    }
+  }
+}
+
+function activateAdmin() {
+  document.querySelectorAll(".admin-mode").forEach(el => {
+    el.style.display = el.classList.contains("save-btn") ? "flex" : "block";
+  });
+  document.getElementById("admin-lock-btn").style.display = "none";
+  document.getElementById("participant-banner").style.display = "none";
+  document.getElementById("save-pronos-btn").style.display = "none";
+  renderAll();
+}
+
+function activateParticipant(pid) {
+  const p = PARTICIPANTS.find(x => x.id === pid);
+  document.querySelectorAll(".admin-mode").forEach(el => el.style.display = "none");
+  document.getElementById("admin-lock-btn").style.display = "none";
+  document.getElementById("participant-banner").style.display = "flex";
+  document.getElementById("participant-banner-name").textContent = p ? p.name : pid;
+  document.getElementById("save-pronos-btn").style.display = "flex";
+  renderAll();
+}
+
+function exitSession() {
+  isAdmin = false; currentParticipantId = null; myPendingPronos = {};
+  document.querySelectorAll(".admin-mode").forEach(el => el.style.display = "none");
+  document.getElementById("admin-lock-btn").style.display = "flex";
+  document.getElementById("participant-banner").style.display = "none";
+  document.getElementById("save-pronos-btn").style.display = "none";
+  renderAll();
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
 }
 
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-// Siempre arranca en modo lectura, nunca admin
 isAdmin = false;
-document.querySelectorAll(".admin-mode").forEach(el=>el.style.display="none");
-document.getElementById("admin-lock-btn").style.display="flex";
-// Firebase cargará los datos via onValue. Mientras, render inicial vacío.
-currentPhase = "grupos";
+currentParticipantId = null;
+document.querySelectorAll(".admin-mode").forEach(el => el.style.display = "none");
+document.getElementById("admin-lock-btn").style.display = "flex";
+currentPhase = "dieciseis";
 renderTabs();
-render();
-renderMatches();
+renderAll();
 </script>
 </body>
 </html>
